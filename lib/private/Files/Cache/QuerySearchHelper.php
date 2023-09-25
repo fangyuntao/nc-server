@@ -144,6 +144,10 @@ class QuerySearchHelper {
 			));
 	}
 
+	protected function equipQueryForShares(CacheQueryBuilder $query): void {
+		$query->join('file', 'share', 's', $query->expr()->eq('file.fileid', 's.file_source'));
+	}
+
 	/**
 	 * Perform a file system search in multiple caches
 	 *
@@ -180,6 +184,9 @@ class QuerySearchHelper {
 		}
 		if (in_array('tagname', $requestedFields) || in_array('favorite', $requestedFields)) {
 			$this->equipQueryForDavTags($query, $this->requireUser($searchQuery));
+		}
+		if (in_array('owner', $requestedFields) || in_array('share_with', $requestedFields) || in_array('share_type', $requestedFields)) {
+			$this->equipQueryForShares($query);
 		}
 
 		$this->applySearchConstraints($query, $searchQuery, $caches);
