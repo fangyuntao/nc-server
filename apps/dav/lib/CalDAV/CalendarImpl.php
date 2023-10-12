@@ -35,9 +35,11 @@ use OCP\Calendar\ICreateFromString;
 use OCP\Calendar\IHandleImipMessage;
 use OCP\Calendar\ISchedulingInformation;
 use OCP\Constants;
+use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\DAV\Exception\Conflict;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
+use Sabre\VObject\Component\VTimeZone;
 use Sabre\VObject\ITip\Message;
 use Sabre\VObject\Reader;
 use function Sabre\Uri\split as uriSplit;
@@ -87,12 +89,20 @@ class CalendarImpl implements ICreateFromString, IHandleImipMessage, IScheduling
 		return $this->calendarInfo['{http://apple.com/ns/ical/}calendar-color'];
 	}
 
-	public function getSchedulingTransparency(): string {
-		return $this->calendarInfo['{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}schedule-calendar-transp'] ?? '';
+	public function getSchedulingTransparency(): ?ScheduleCalendarTransp {
+		return $this->calendarInfo['{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}schedule-calendar-transp'];
 	}
 
-	public function getSchedulingTimezone(): string {
-		return $this->calendarInfo['{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}calendar-timezone'] ?? '';
+	public function getSchedulingTimezone(): ?VTimeZone {
+		$tzProp = '{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}calendar-timezone';
+		if (!isset($calendarInfo[$tzProp])) {
+			return null;
+		}
+		// This property contains a VCALENDAR with a single VTIMEZONE
+		/** @var string $timezoneProp */
+		$timezoneProp = $calendarInfo[$tzProp];
+		/** @var VCalendar $vtimezoneObj */
+		return VObject\Reader::read($timezoneProp);
 	}
 
 	/**

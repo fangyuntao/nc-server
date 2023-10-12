@@ -24,6 +24,9 @@ declare(strict_types=1);
  */
 namespace OCP\Calendar;
 
+use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
+use Sabre\VObject\Component\VTimeZone;
+
 /**
  *  Extends the ICalendar interface
  *  to expose scheduling information
@@ -34,11 +37,11 @@ interface ISchedulingInformation extends ICalendar {
 	/**
 	 * @since 28.0.0
 	 */
-	public function getSchedulingTransparency(): string;
+	public function getSchedulingTransparency(): ?ScheduleCalendarTransp;
 
 	/**
 	 * @since 28.0.0
 	 */
-	public function getSchedulingTimezone(): string;
+	public function getSchedulingTimezone(): ?VTimeZone;
 
 }

@@ -43,6 +43,10 @@
 	background-image: url('../img/user-status-dnd.svg');
 }
 
+.icon-user-status-busy {
+	background-image: url('../img/user-status-busy.svg');
+}
+
 .icon-user-status-invisible {
 	background-image: url('../img/user-status-invisible.svg');
 	filter: var(--background-invert-if-dark);

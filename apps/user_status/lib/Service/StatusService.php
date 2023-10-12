@@ -76,6 +76,7 @@ class StatusService {
 		IUserStatus::ONLINE,
 		IUserStatus::AWAY,
 		IUserStatus::DND,
+		IUserStatus::BUSY,
 		IUserStatus::INVISIBLE,
 		IUserStatus::OFFLINE,
 	];
@@ -653,12 +654,10 @@ class StatusService {
 				continue;
 			}
 
+			/** @var Component\VTimeZone $ctz */
 			$ctz = $calendarObject->getSchedulingTimezone();
 			if (!empty($ctz)) {
-				$vtimezoneObj = Reader::read($ctz);
-				$calendarTimeZone = $vtimezoneObj->VTIMEZONE->getTimeZone();
-				// Destroy circular references so PHP can garbage collect the object.
-				$vtimezoneObj->destroy();
+				$calendarTimeZone = $ctz->getTimeZone();
 			}
 			$query->addSearchCalendar($calendarObject->getUri());
 		}

@@ -87,6 +87,9 @@ export default {
 			case 'dnd':
 				return 'icon-user-status-dnd'
 
+			case 'busy':
+				return 'icon-user-status-busy'
+
 			case 'invisible':
 			case 'offline':
 				return 'icon-user-status-invisible'
