@@ -53,6 +53,12 @@ interface IUserStatus {
 
 	/**
 	 * @var string
+	 * @since 28.0.0
+	 */
+	public const BUSY = 'busy';
+
+	/**
+	 * @var string
 	 * @since 20.0.0
 	 */
 	public const OFFLINE = 'offline';
@@ -79,7 +85,7 @@ interface IUserStatus {
 	 * @var string
 	 * @since 28.0.0
 	 */
-	public const MESSAGE_CALENDAR_BUSY = 'busy';
+	public const MESSAGE_CALENDAR_BUSY = 'meeting';
 
 	/**
 	 * @var string
