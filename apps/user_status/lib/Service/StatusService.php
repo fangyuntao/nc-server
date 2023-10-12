@@ -257,9 +257,10 @@ class StatusService {
 	 * @throws InvalidMessageIdException
 	 */
 	public function setUserStatus(string $userId,
-										 string $status,
-										 string $messageId,
-										 bool $createBackup): void {
+									string $status,
+									string $messageId,
+								 	bool $createBackup,
+									string $customMessage = null): void {
 		// Check if status-type is valid
 		if (!in_array($status, self::PRIORITY_ORDERED_STATUSES, true)) {
 			throw new InvalidStatusTypeException('Status-type "' . $status . '" is not supported');
@@ -292,7 +293,7 @@ class StatusService {
 		$userStatus->setIsBackup(false);
 		$userStatus->setMessageId($messageId);
 		$userStatus->setCustomIcon(null);
-		$userStatus->setCustomMessage(null);
+		$userStatus->setCustomMessage($customMessage);
 		$userStatus->setClearAt(null);
 		$userStatus->setStatusMessageTimestamp($this->timeFactory->now()->getTimestamp());
 
@@ -713,8 +714,9 @@ class StatusService {
 		$freeBusyComponent = $result->VFREEBUSY;
 		$freeBusyProperties = $freeBusyComponent->select('FREEBUSY');
 		// If there is no FreeBusy property, the time-range is empty and available
-		// so there is no need to influence the current status
+		// so set the status to online as otherwise we will never recover from a BUSY status
 		if (count($freeBusyProperties) === 0) {
+			$this->setUserStatus($userId, IUserStatus::ONLINE, IUserStatus::ONLINE, false);
 			return;
 		}
 
@@ -722,8 +724,7 @@ class StatusService {
 		$freeBusyProperty = $freeBusyProperties[0];
 		if (!$freeBusyProperty->offsetExists('FBTYPE')) {
 			// If there is no FBTYPE, it means it's busy from a regular event
-			// @todo check if it would be better to set the timestamp to the start of the event
-			$this->setUserStatus($userId, IUserStatus::AWAY, IUserStatus::MESSAGE_CALENDAR_BUSY, false);
+			$this->setUserStatus($userId, IUserStatus::BUSY, IUserStatus::MESSAGE_CALENDAR_BUSY, false);
 			return;
 		}
 
@@ -736,7 +737,7 @@ class StatusService {
 		$fbType = $fbTypeParameter->getValue();
 		switch ($fbType) {
 			case 'BUSY':
-				$this->setUserStatus($userId, IUserStatus::AWAY, IUserStatus::MESSAGE_CALENDAR_BUSY, false);
+				$this->setUserStatus($userId, IUserStatus::BUSY, IUserStatus::MESSAGE_CALENDAR_BUSY, false, 'In a meeting');
 				return;
 			case 'BUSY-UNAVAILABLE':
 				$this->setUserStatus($userId, IUserStatus::AWAY, IUserStatus::MESSAGE_AVAILABILITY, false);

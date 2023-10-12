@@ -48,20 +48,23 @@ export default {
 
 			if (this.statusIsUserDefined) {
 				switch (this.statusType) {
-				case 'online':
-					return this.$t('user_status', 'Online')
+					case 'online':
+						return this.$t('user_status', 'Online')
 
-				case 'away':
-					return this.$t('user_status', 'Away')
+					case 'away':
+						return this.$t('user_status', 'Away')
 
-				case 'dnd':
-					return this.$t('user_status', 'Do not disturb')
+					case 'dnd':
+						return this.$t('user_status', 'Do not disturb')
 
-				case 'invisible':
-					return this.$t('user_status', 'Invisible')
+					case 'busy':
+						return this.$t('user_status', 'Busy')
 
-				case 'offline':
-					return this.$t('user_status', 'Offline')
+					case 'invisible':
+						return this.$t('user_status', 'Invisible')
+
+					case 'offline':
+						return this.$t('user_status', 'Offline')
 				}
 			}
 
