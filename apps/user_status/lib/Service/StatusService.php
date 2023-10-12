@@ -646,17 +646,15 @@ class StatusService {
 				continue;
 			}
 
-			/** @var ISchedulingInformation $calendarObject $sct */
 			$sct = $calendarObject->getSchedulingTransparency();
-			if (!empty($sct) && ScheduleCalendarTransp::TRANSPARENT == $sct->getValue()) {
+			if ($sct !== null && ScheduleCalendarTransp::TRANSPARENT == $sct->getValue()) {
 				// If a calendar is marked as 'transparent', it means we must
 				// ignore it for free-busy purposes.
 				continue;
 			}
 
-			/** @var Component\VTimeZone $ctz */
 			$ctz = $calendarObject->getSchedulingTimezone();
-			if (!empty($ctz)) {
+			if ($ctz !== null) {
 				$calendarTimeZone = $ctz->getTimeZone();
 			}
 			$query->addSearchCalendar($calendarObject->getUri());

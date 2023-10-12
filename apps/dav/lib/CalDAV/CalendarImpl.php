@@ -95,12 +95,12 @@ class CalendarImpl implements ICreateFromString, IHandleImipMessage, IScheduling
 
 	public function getSchedulingTimezone(): ?VTimeZone {
 		$tzProp = '{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}calendar-timezone';
-		if (!isset($calendarInfo[$tzProp])) {
+		if (!isset($this->calendarInfo[$tzProp])) {
 			return null;
 		}
 		// This property contains a VCALENDAR with a single VTIMEZONE
 		/** @var string $timezoneProp */
-		$timezoneProp = $calendarInfo[$tzProp];
+		$timezoneProp = $this->calendarInfo[$tzProp];
 		/** @var VCalendar $vtimezoneObj */
 		return VObject\Reader::read($timezoneProp);
 	}
