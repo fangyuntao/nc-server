@@ -102,7 +102,7 @@ class CalendarImpl implements ICreateFromString, IHandleImipMessage, IScheduling
 		/** @var string $timezoneProp */
 		$timezoneProp = $this->calendarInfo[$tzProp];
 		/** @var VCalendar $vtimezoneObj */
-		return VObject\Reader::read($timezoneProp);
+		return Reader::read($timezoneProp);
 	}
 
 	/**
