@@ -1526,7 +1526,6 @@ class ComposerStaticInit749170dad3f5e7f9ca158f5a9f04f6a2
         'OC\\Memcache\\Redis' => __DIR__ . '/../../..' . '/lib/private/Memcache/Redis.php',
         'OC\\Memcache\\WithLocalCache' => __DIR__ . '/../../..' . '/lib/private/Memcache/WithLocalCache.php',
         'OC\\MemoryInfo' => __DIR__ . '/../../..' . '/lib/private/MemoryInfo.php',
-        'OC\\Metadata\\Provider\\ExifProvider' => __DIR__ . '/../../..' . '/lib/private/Metadata/Provider/ExifProvider.php',
         'OC\\Migration\\BackgroundRepair' => __DIR__ . '/../../..' . '/lib/private/Migration/BackgroundRepair.php',
         'OC\\Migration\\ConsoleOutput' => __DIR__ . '/../../..' . '/lib/private/Migration/ConsoleOutput.php',
         'OC\\Migration\\SimpleOutput' => __DIR__ . '/../../..' . '/lib/private/Migration/SimpleOutput.php',

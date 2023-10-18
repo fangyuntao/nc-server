@@ -326,11 +326,6 @@ class Application extends App {
 		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedFilesCleanupListener::class);
 		$eventDispatcher->addServiceListener(UserDeletedEvent::class, UserDeletedWebAuthnCleanupListener::class);
 
-		// Metadata
-		$eventDispatcher->addServiceListener(MetadataLiveEvent::class, ExifMetadataProvider::class, 1);
-		$eventDispatcher->addServiceListener(MetadataLiveEvent::class, SizeMetadataProvider::class);
-		$eventDispatcher->addServiceListener(MetadataLiveEvent::class, OriginalDateTimeMetadataProvider::class);
-
 		// Tags
 		$eventDispatcher->addServiceListener(UserDeletedEvent::class, TagManager::class);
 	}

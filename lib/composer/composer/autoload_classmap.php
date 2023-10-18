@@ -1493,7 +1493,6 @@ return array(
     'OC\\Memcache\\Redis' => $baseDir . '/lib/private/Memcache/Redis.php',
     'OC\\Memcache\\WithLocalCache' => $baseDir . '/lib/private/Memcache/WithLocalCache.php',
     'OC\\MemoryInfo' => $baseDir . '/lib/private/MemoryInfo.php',
-    'OC\\Metadata\\Provider\\ExifProvider' => $baseDir . '/lib/private/Metadata/Provider/ExifProvider.php',
     'OC\\Migration\\BackgroundRepair' => $baseDir . '/lib/private/Migration/BackgroundRepair.php',
     'OC\\Migration\\ConsoleOutput' => $baseDir . '/lib/private/Migration/ConsoleOutput.php',
     'OC\\Migration\\SimpleOutput' => $baseDir . '/lib/private/Migration/SimpleOutput.php',
