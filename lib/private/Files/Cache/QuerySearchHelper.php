@@ -62,7 +62,8 @@ class QuerySearchHelper {
 		return new CacheQueryBuilder(
 			$this->connection,
 			$this->systemConfig,
-			$this->logger
+			$this->logger,
+			$this->filesMetadataManager,
 		);
 	}
 
