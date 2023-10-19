@@ -32,18 +32,22 @@ use OCP\App\IAppManager;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUser;
-use OCP\Search\IProvider;
+use OCP\Search\FilterDefinition;
+use OCP\Search\IFilteringProvider;
 use OCP\Search\ISearchQuery;
 use OCP\Search\SearchResult;
 use OCP\Search\SearchResultEntry;
 use Sabre\VObject\Component\VCard;
 use Sabre\VObject\Reader;
 
-class ContactsSearchProvider implements IProvider {
+class ContactsSearchProvider implements IFilteringProvider {
+	private static $searchPropertiesRestricted = [
+		'N',
+		'FN',
+		'NICKNAME',
+		'EMAIL',
+	];
 
-	/**
-	 * @var string[]
-	 */
 	private static $searchProperties = [
 		'N',
 		'FN',
@@ -106,13 +110,15 @@ class ContactsSearchProvider implements IProvider {
 		$searchResults = $this->backend->searchPrincipalUri(
 			$principalUri,
 			$query->getFilter('term')?->get() ?? '',
-			self::$searchProperties,
+			$query->getFilter('title-only')?->get() ? self::$searchPropertiesRestricted : self::$searchProperties,
 			[
 				'limit' => $query->getLimit(),
 				'offset' => $query->getCursor(),
 				'since' => $query->getFilter('since'),
 				'until' => $query->getFilter('until'),
-			]
+				'person' => $query->getFilter('person'),
+				'company' => $query->getFilter('company'),
+			],
 		);
 		$formattedResults = \array_map(function (array $contactRow) use ($addressBooksById):SearchResultEntry {
 			$addressBook = $addressBooksById[$contactRow['addressbookid']];
@@ -175,5 +181,25 @@ class ContactsSearchProvider implements IProvider {
 		}
 
 		return (string)$emailAddresses[0];
+	}
+
+	public function getSupportedFilters(): array {
+		return [
+			'term',
+			'since',
+			'until',
+			'person',
+			'title-only',
+		];
+	}
+
+	public function getAlternateIds(): array {
+		return [];
+	}
+
+	public function getCustomFilters(): array {
+		return [
+			new FilterDefinition('company'),
+		];
 	}
 }
