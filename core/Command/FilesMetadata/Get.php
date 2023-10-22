@@ -26,8 +26,6 @@ declare(strict_types=1);
 
 namespace OC\Core\Command\FilesMetadata;
 
-use OC\DB\ConnectionAdapter;
-use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\FilesMetadata\IFilesMetadataManager;
@@ -59,11 +57,17 @@ class Get extends Command {
 				 'file owner'
 			 )
 			 ->addOption(
-				 'refresh',
+				 'as-array',
 				 '',
 				 InputOption::VALUE_NONE,
-				 'refresh metadata'
+				 'display metadata as a simple key=>value array'
 			 )
+			 ->addOption(
+				'refresh',
+				'',
+				InputOption::VALUE_NONE,
+				'refresh metadata'
+			)
 			 ->addOption(
 				 'reset',
 				 '',
@@ -90,7 +94,11 @@ class Get extends Command {
 			$metadata = $this->filesMetadataManager->getMetadata($fileId);
 		}
 
-		$output->writeln(json_encode($metadata, JSON_PRETTY_PRINT));
+		if ($input->getOption('as-array')) {
+			$output->writeln(json_encode($metadata->asArray(), JSON_PRETTY_PRINT));
+		} else {
+			$output->writeln(json_encode($metadata, JSON_PRETTY_PRINT));
+		}
 
 		return 0;
 	}

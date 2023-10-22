@@ -50,7 +50,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 			return $this->metadataRequestService->getMetadataFromFileId($fileId);
 		} catch (FilesMetadataNotFoundException $e) {
 			if ($generate) {
-				return new FilesMetadata($fileId, true);
+				return new FilesMetadata($fileId);
 			}
 
 			throw $e;
@@ -71,7 +71,9 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		}
 
 		if (null === $metadata) {
-			$metadata = new FilesMetadata($node->getId(), true);
+			// if $fromScratch, we reset all and new empty FilesMetadata will
+			// erase the one stored in db even if it stays empty.
+			$metadata = new FilesMetadata($node->getId(), $fromScratch);
 		}
 
 		// is $process is LIVE, we enforce LIVE

@@ -19,7 +19,7 @@ interface IFilesMetadataManager {
 		bool $fromScratch = false
 	): IFilesMetadata;
 
-	public function getMetadata(int $fileId): IFilesMetadata;
+	public function getMetadata(int $fileId, bool $generate = false): IFilesMetadata;
 
 	public function saveMetadata(IFilesMetadata $filesMetadata): void;
 
