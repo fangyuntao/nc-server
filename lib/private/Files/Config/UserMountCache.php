@@ -78,41 +78,27 @@ class UserMountCache implements IUserMountCache {
 
 	public function registerMounts(IUser $user, array $mounts, array $mountProviderClasses = null) {
 		$this->eventLogger->start('fs:setup:user:register', 'Registering mounts for user');
-		// filter out non-proper storages coming from unit tests
-		$mounts = array_filter($mounts, function (IMountPoint $mount) {
-			return $mount instanceof SharedMount || ($mount->getStorage() && $mount->getStorage()->getCache());
-		});
-		/** @var ICachedMountInfo[] $newMounts */
-		$newMounts = array_map(function (IMountPoint $mount) use ($user) {
+		/** @var array<string, ICachedMountInfo> $newMounts */
+		$newMounts = [];
+		foreach ($mounts as $mount) {
 			// filter out any storages which aren't scanned yet since we aren't interested in files from those storages (yet)
-			if ($mount->getStorageRootId() === -1) {
-				return null;
-			} else {
-				return new LazyStorageMountInfo($user, $mount);
+			if ($mount->getStorageRootId() !== -1) {
+				$mountInfo = new LazyStorageMountInfo($user, $mount);
+				$newMounts[$mountInfo->getKey()] = $mountInfo;
 			}
-		}, $mounts);
-		$newMounts = array_values(array_filter($newMounts));
-		$newMountKeys = array_map(function (ICachedMountInfo $mount) {
-			return $mount->getRootId() . '::' . $mount->getMountPoint();
-		}, $newMounts);
-		$newMounts = array_combine($newMountKeys, $newMounts);
+		}
 
 		$cachedMounts = $this->getMountsForUser($user);
 		if (is_array($mountProviderClasses)) {
 			$cachedMounts = array_filter($cachedMounts, function (ICachedMountInfo $mountInfo) use ($mountProviderClasses, $newMounts) {
 				// for existing mounts that didn't have a mount provider set
 				// we still want the ones that map to new mounts
-				$mountKey = $mountInfo->getRootId() . '::' . $mountInfo->getMountPoint();
-				if ($mountInfo->getMountProvider() === '' && isset($newMounts[$mountKey])) {
+				if ($mountInfo->getMountProvider() === '' && isset($newMounts[$mountInfo->getKey()])) {
 					return true;
 				}
 				return in_array($mountInfo->getMountProvider(), $mountProviderClasses);
 			});
 		}
-		$cachedRootKeys = array_map(function (ICachedMountInfo $mount) {
-			return $mount->getRootId() . '::' . $mount->getMountPoint();
-		}, $cachedMounts);
-		$cachedMounts = array_combine($cachedRootKeys, $cachedMounts);
 
 		$addedMounts = [];
 		$removedMounts = [];
@@ -131,46 +117,42 @@ class UserMountCache implements IUserMountCache {
 
 		$changedMounts = $this->findChangedMounts($newMounts, $cachedMounts);
 
-		$this->connection->beginTransaction();
-		try {
-			foreach ($addedMounts as $mount) {
-				$this->addToCache($mount);
-				/** @psalm-suppress InvalidArgument */
-				$this->mountsForUsers[$user->getUID()][] = $mount;
+		if ($addedMounts || $removedMounts || $changedMounts) {
+			$this->connection->beginTransaction();
+			try {
+				foreach ($addedMounts as $mount) {
+					$this->addToCache($mount);
+					/** @psalm-suppress InvalidArgument */
+					$this->mountsForUsers[$user->getUID()][] = $mount;
+				}
+				foreach ($removedMounts as $mount) {
+					$this->removeFromCache($mount);
+					$index = array_search($mount, $this->mountsForUsers[$user->getUID()]);
+					unset($this->mountsForUsers[$user->getUID()][$index]);
+				}
+				foreach ($changedMounts as $mount) {
+					$this->updateCachedMount($mount);
+				}
+				$this->connection->commit();
+			} catch (\Throwable $e) {
+				$this->connection->rollBack();
+				throw $e;
 			}
-			foreach ($removedMounts as $mount) {
-				$this->removeFromCache($mount);
-				$index = array_search($mount, $this->mountsForUsers[$user->getUID()]);
-				unset($this->mountsForUsers[$user->getUID()][$index]);
-			}
-			foreach ($changedMounts as $mount) {
-				$this->updateCachedMount($mount);
-			}
-			$this->connection->commit();
-		} catch (\Throwable $e) {
-			$this->connection->rollBack();
-			throw $e;
 		}
 		$this->eventLogger->end('fs:setup:user:register');
 	}
 
 	/**
-	 * @param ICachedMountInfo[] $newMounts
-	 * @param ICachedMountInfo[] $cachedMounts
+	 * @param array<string, ICachedMountInfo> $newMounts
+	 * @param array<string, ICachedMountInfo> $cachedMounts
 	 * @return ICachedMountInfo[]
 	 */
 	private function findChangedMounts(array $newMounts, array $cachedMounts) {
-		$new = [];
-		foreach ($newMounts as $mount) {
-			$new[$mount->getRootId() . '::' . $mount->getMountPoint()] = $mount;
-		}
 		$changed = [];
-		foreach ($cachedMounts as $cachedMount) {
-			$key = $cachedMount->getRootId() . '::' . $cachedMount->getMountPoint();
-			if (isset($new[$key])) {
-				$newMount = $new[$key];
+		foreach ($cachedMounts as $key => $cachedMount) {
+			if (isset($newMounts[$key])) {
+				$newMount = $newMounts[$key];
 				if (
-					$newMount->getMountPoint() !== $cachedMount->getMountPoint() ||
 					$newMount->getStorageId() !== $cachedMount->getStorageId() ||
 					$newMount->getMountId() !== $cachedMount->getMountId() ||
 					$newMount->getMountProvider() !== $cachedMount->getMountProvider()
@@ -258,7 +240,11 @@ class UserMountCache implements IUserMountCache {
 			$rows = $result->fetchAll();
 			$result->closeCursor();
 
-			$this->mountsForUsers[$user->getUID()] = array_filter(array_map([$this, 'dbRowToMountInfo'], $rows));
+			/** @var array<string, ICachedMountInfo> $mounts */
+			foreach ($rows as $row) {
+				$mount = $this->dbRowToMountInfo($row);
+				$this->mountsForUsers[$user->getUID()][$mount->getKey()] = $mount;
+			}
 		}
 		return $this->mountsForUsers[$user->getUID()];
 	}
