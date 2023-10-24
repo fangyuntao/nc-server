@@ -170,14 +170,14 @@ export const initCore = () => {
 		const oldSnapperOpen = snapper.open
 		const oldSnapperClose = snapper.close
 		const _snapperOpen = () => {
-			if (animating || snapper.state().state !== 'closed') {
+			if (snapper.state().state !== 'closed') {
 				return
 			}
 			oldSnapperOpen('left')
 		}
 
 		const _snapperClose = () => {
-			if (animating || snapper.state().state === 'closed') {
+			if (snapper.state().state === 'closed') {
 				return
 			}
 			oldSnapperClose()
