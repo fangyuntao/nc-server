@@ -39,7 +39,6 @@ use Doctrine\DBAL\Platforms\SqlitePlatform;
 use OC;
 use OC\DB\Connection;
 use OC\IntegrityCheck\Checker;
-use OC\MemoryInfo;
 use OC\Security\SecureRandom;
 use OCA\Settings\Controller\CheckSetupController;
 use OCP\App\IAppManager;
@@ -98,8 +97,6 @@ class CheckSetupControllerTest extends TestCase {
 	private $lockingProvider;
 	/** @var IDateTimeFormatter|\PHPUnit\Framework\MockObject\MockObject */
 	private $dateTimeFormatter;
-	/** @var MemoryInfo|MockObject */
-	private $memoryInfo;
 	/** @var SecureRandom|\PHPUnit\Framework\MockObject\MockObject */
 	private $secureRandom;
 	/** @var IniGetWrapper|\PHPUnit\Framework\MockObject\MockObject */
@@ -151,9 +148,6 @@ class CheckSetupControllerTest extends TestCase {
 		$this->throttler = $this->createMock(IThrottler::class);
 		$this->lockingProvider = $this->getMockBuilder(ILockingProvider::class)->getMock();
 		$this->dateTimeFormatter = $this->getMockBuilder(IDateTimeFormatter::class)->getMock();
-		$this->memoryInfo = $this->getMockBuilder(MemoryInfo::class)
-			->setMethods(['isMemoryLimitSufficient',])
-			->getMock();
 		$this->secureRandom = $this->getMockBuilder(SecureRandom::class)->getMock();
 		$this->iniGetWrapper = $this->getMockBuilder(IniGetWrapper::class)->getMock();
 		$this->connection = $this->getMockBuilder(IDBConnection::class)
@@ -177,7 +171,6 @@ class CheckSetupControllerTest extends TestCase {
 				$this->db,
 				$this->lockingProvider,
 				$this->dateTimeFormatter,
-				$this->memoryInfo,
 				$this->secureRandom,
 				$this->iniGetWrapper,
 				$this->connection,
@@ -419,9 +412,6 @@ class CheckSetupControllerTest extends TestCase {
 			->expects($this->once())
 			->method('hasPassedCheck')
 			->willReturn(true);
-		$this->memoryInfo
-			->method('isMemoryLimitSufficient')
-			->willReturn(true);
 
 		$this->checkSetupController
 			->expects($this->once())
@@ -526,7 +516,6 @@ class CheckSetupControllerTest extends TestCase {
 				'missingIndexes' => [],
 				'missingPrimaryKeys' => [],
 				'missingColumns' => [],
-				'isMemoryLimitSufficient' => true,
 				'appDirsWithDifferentOwner' => [],
 				'isImagickEnabled' => false,
 				'areWebauthnExtensionsEnabled' => false,
@@ -561,7 +550,6 @@ class CheckSetupControllerTest extends TestCase {
 				$this->db,
 				$this->lockingProvider,
 				$this->dateTimeFormatter,
-				$this->memoryInfo,
 				$this->secureRandom,
 				$this->iniGetWrapper,
 				$this->connection,
@@ -1290,7 +1278,6 @@ Array
 			$this->db,
 			$this->lockingProvider,
 			$this->dateTimeFormatter,
-			$this->memoryInfo,
 			$this->secureRandom,
 			$this->iniGetWrapper,
 			$this->connection,
@@ -1346,7 +1333,6 @@ Array
 			$this->db,
 			$this->lockingProvider,
 			$this->dateTimeFormatter,
-			$this->memoryInfo,
 			$this->secureRandom,
 			$this->iniGetWrapper,
 			$this->connection,

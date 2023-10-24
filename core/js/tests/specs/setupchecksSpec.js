@@ -247,7 +247,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -317,7 +316,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -387,7 +385,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -454,7 +451,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -519,7 +515,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -584,7 +579,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -649,7 +643,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -714,7 +707,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -779,7 +771,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [
 						'/some/path'
 					],
@@ -846,7 +837,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -913,7 +903,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -978,7 +967,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1043,7 +1031,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: false,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1060,6 +1047,18 @@ describe('OC.SetupChecks tests', function() {
 								description: null,
 								linkToDoc: null
 							}
+						},
+						php: {
+							"Internet connectivity": {
+								severity: "success",
+								description: null,
+								linkToDoc: null
+							},
+							"PHP memory limit": {
+								severity: "error",
+								description: "The PHP memory limit is below the recommended value of 512MB.",
+								linkToDoc: null
+							},
 						},
 					},
 				})
@@ -1128,7 +1127,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1200,7 +1198,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1265,7 +1262,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1330,7 +1326,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1399,7 +1394,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1465,7 +1459,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1528,7 +1521,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1594,7 +1586,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: false,
 					areWebauthnExtensionsEnabled: true,
@@ -1660,7 +1651,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: false,
@@ -1725,7 +1715,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1790,7 +1779,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,
@@ -1862,7 +1850,6 @@ describe('OC.SetupChecks tests', function() {
 					cronInfo: {
 						diffInSeconds: 0
 					},
-					isMemoryLimitSufficient: true,
 					appDirsWithDifferentOwner: [],
 					isImagickEnabled: true,
 					areWebauthnExtensionsEnabled: true,

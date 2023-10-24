@@ -53,6 +53,7 @@ use OCA\Settings\SetupChecks\DefaultPhoneRegionSet;
 use OCA\Settings\SetupChecks\InternetConnectivity;
 use OCA\Settings\SetupChecks\LegacySSEKeyFormat;
 use OCA\Settings\SetupChecks\PhpDefaultCharset;
+use OCA\Settings\SetupChecks\PhpMemoryLimit;
 use OCA\Settings\SetupChecks\PhpModules;
 use OCA\Settings\SetupChecks\PhpOutdated;
 use OCA\Settings\SetupChecks\PhpOutputBuffering;
@@ -152,6 +153,7 @@ class Application extends App implements IBootstrap {
 		$context->registerSetupCheck(InternetConnectivity::class);
 		$context->registerSetupCheck(LegacySSEKeyFormat::class);
 		$context->registerSetupCheck(PhpDefaultCharset::class);
+		$context->registerSetupCheck(PhpMemoryLimit::class);
 		$context->registerSetupCheck(PhpModules::class);
 		$context->registerSetupCheck(PhpOutdated::class);
 		$context->registerSetupCheck(PhpOutputBuffering::class);

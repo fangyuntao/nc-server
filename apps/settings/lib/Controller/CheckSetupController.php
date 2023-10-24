@@ -58,9 +58,8 @@ use OC\DB\MissingIndexInformation;
 use OC\DB\MissingPrimaryKeyInformation;
 use OC\DB\SchemaWrapper;
 use OC\IntegrityCheck\Checker;
-use OC\Lock\NoopLockingProvider;
 use OC\Lock\DBLockingProvider;
-use OC\MemoryInfo;
+use OC\Lock\NoopLockingProvider;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\IgnoreOpenAPI;
@@ -110,8 +109,6 @@ class CheckSetupController extends Controller {
 	private $lockingProvider;
 	/** @var IDateTimeFormatter */
 	private $dateTimeFormatter;
-	/** @var MemoryInfo */
-	private $memoryInfo;
 	/** @var ISecureRandom */
 	private $secureRandom;
 	/** @var IniGetWrapper */
@@ -131,27 +128,26 @@ class CheckSetupController extends Controller {
 	private ISetupCheckManager $setupCheckManager;
 
 	public function __construct($AppName,
-								IRequest $request,
-								IConfig $config,
-								IClientService $clientService,
-								IURLGenerator $urlGenerator,
-								IL10N $l10n,
-								Checker $checker,
-								LoggerInterface $logger,
-								IEventDispatcher $dispatcher,
-								Connection $db,
-								ILockingProvider $lockingProvider,
-								IDateTimeFormatter $dateTimeFormatter,
-								MemoryInfo $memoryInfo,
-								ISecureRandom $secureRandom,
-								IniGetWrapper $iniGetWrapper,
-								IDBConnection $connection,
-								IThrottler $throttler,
-								ITempManager $tempManager,
-								IManager $manager,
-								IAppManager $appManager,
-								IServerContainer $serverContainer,
-								ISetupCheckManager $setupCheckManager,
+		IRequest $request,
+		IConfig $config,
+		IClientService $clientService,
+		IURLGenerator $urlGenerator,
+		IL10N $l10n,
+		Checker $checker,
+		LoggerInterface $logger,
+		IEventDispatcher $dispatcher,
+		Connection $db,
+		ILockingProvider $lockingProvider,
+		IDateTimeFormatter $dateTimeFormatter,
+		ISecureRandom $secureRandom,
+		IniGetWrapper $iniGetWrapper,
+		IDBConnection $connection,
+		IThrottler $throttler,
+		ITempManager $tempManager,
+		IManager $manager,
+		IAppManager $appManager,
+		IServerContainer $serverContainer,
+		ISetupCheckManager $setupCheckManager,
 	) {
 		parent::__construct($AppName, $request);
 		$this->config = $config;
@@ -165,7 +161,6 @@ class CheckSetupController extends Controller {
 		$this->throttler = $throttler;
 		$this->lockingProvider = $lockingProvider;
 		$this->dateTimeFormatter = $dateTimeFormatter;
-		$this->memoryInfo = $memoryInfo;
 		$this->secureRandom = $secureRandom;
 		$this->iniGetWrapper = $iniGetWrapper;
 		$this->connection = $connection;
@@ -848,7 +843,6 @@ Raw output
 				'missingColumns' => $this->hasMissingColumns(),
 				'isSqliteUsed' => $this->isSqliteUsed(),
 				'databaseConversionDocumentation' => $this->urlGenerator->linkToDocs('admin-db-conversion'),
-				'isMemoryLimitSufficient' => $this->memoryInfo->isMemoryLimitSufficient(),
 				'appDirsWithDifferentOwner' => $this->getAppDirsWithDifferentOwner(),
 				'isImagickEnabled' => $this->isImagickEnabled(),
 				'areWebauthnExtensionsEnabled' => $this->areWebauthnExtensionsEnabled(),
