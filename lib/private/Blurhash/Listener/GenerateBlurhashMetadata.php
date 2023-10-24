@@ -12,6 +12,7 @@ use OCP\EventDispatcher\IEventDispatcher;
 use OCP\EventDispatcher\IEventListener;
 use OCP\FilesMetadata\Event\MetadataBackgroundEvent;
 use OCP\FilesMetadata\Event\MetadataLiveEvent;
+use OCP\IPreview;
 
 class GenerateBlurhashMetadata implements IEventListener {
 	private const RESIZE_BOXSIZE = 300;
@@ -19,7 +20,9 @@ class GenerateBlurhashMetadata implements IEventListener {
 	private const COMPONENTS_X = 4;
 	private const COMPONENTS_Y = 3;
 
-	public function __construct() {
+	public function __construct(
+		private IPreview $preview
+	) {
 	}
 
 	public function handle(Event $event): void {
@@ -39,7 +42,14 @@ class GenerateBlurhashMetadata implements IEventListener {
 			return;
 		}
 
+		// use our own resize
 		$image = $this->resizedImageFromFile($file);
+
+		// or use the one from the preview system (not working on >4M jpeg photo)
+		// https://github.com/nextcloud/server/blob/9d70fd3e64b60a316a03fb2b237891380c310c58/lib/private/legacy/OC_Image.php#L668
+		// $f = $this->preview->getPreview($file, 256, 256);
+		// $image = imagecreatefromstring($f->getContent());
+
 		$metadata = $event->getMetadata();
 		$metadata->set('blurhash', $this->generateBlurHash($image));
 	}
