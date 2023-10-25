@@ -1,9 +1,9 @@
 <?php
 /*
  * *
- *  * {$app} App
+ *  * Dav App
  *  *
- *  * @copyright 2022 Anna Larch <anna.larch@gmx.net>
+ *  * @copyright 2023 Anna Larch <anna.larch@gmx.net>
  *  *
  *  * @author Anna Larch <anna.larch@gmx.net>
  *  *
