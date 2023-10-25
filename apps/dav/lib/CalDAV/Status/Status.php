@@ -27,7 +27,7 @@ namespace OCA\DAV\CalDAV\Status;
 
 class Status {
 
-	public function __construct(private string $status = '', private string $message = '', private ?string $customMessage = null){}
+	public function __construct(private string $status = '', private ?string $message = null, private ?string $customMessage = null){}
 
 	public function getStatus(): string {
 		return $this->status;
@@ -37,11 +37,11 @@ class Status {
 		$this->status = $status;
 	}
 
-	public function getMessage(): string {
+	public function getMessage(): ?string {
 		return $this->message;
 	}
 
-	public function setMessage(string $message): void {
+	public function setMessage(?string $message): void {
 		$this->message = $message;
 	}
 
@@ -49,7 +49,7 @@ class Status {
 		return $this->customMessage;
 	}
 
-	public function setCustomMessage(string $customMessage): void {
+	public function setCustomMessage(?string $customMessage): void {
 		$this->customMessage = $customMessage;
 	}
 

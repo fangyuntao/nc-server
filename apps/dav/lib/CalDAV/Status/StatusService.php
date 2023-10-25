@@ -197,7 +197,7 @@ class StatusService {
 		// If there is no FreeBusy property, the time-range is empty and available
 		// so set the status to online as otherwise we will never recover from a BUSY status
 		if (count($freeBusyProperties) === 0) {
-			return new Status(IUserStatus::ONLINE, IUserStatus::ONLINE);
+			return new Status(IUserStatus::ONLINE);
 		}
 
 		/** @var Property $freeBusyProperty */

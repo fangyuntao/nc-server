@@ -152,7 +152,7 @@ class StatusService {
 	 * @throws DoesNotExistException
 	 */
 	public function findByUserId(string $userId):UserStatus {
-		$this->processCalendarAvailability($userId);
+		$this->getCalendarStatus($userId);
 		return $this->processStatus($this->mapper->findByUserId($userId));
 	}
 
@@ -585,7 +585,7 @@ class StatusService {
 	 * @param string $userId
 	 * @return void
 	 */
-	private function processCalendarAvailability(string $userId): void {
+	public function getCalendarStatus(string $userId): void {
 		$user = $this->userManager->get($userId);
 		if($user === null) {
 			return;
@@ -595,6 +595,11 @@ class StatusService {
 
 		$status = $this->calendarStatusService->processCalendarAvailability($user, $availability);
 		if($status === null) {
+			return;
+		}
+
+		if($status->getMessage() === null) {
+			$this->setStatus($userId, $status->getStatus(), $this->timeFactory->getTime(), true);
 			return;
 		}
 
