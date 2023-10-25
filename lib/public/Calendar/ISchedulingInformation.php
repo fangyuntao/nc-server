@@ -26,6 +26,7 @@ namespace OCP\Calendar;
 
 use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\VObject\Component\VTimeZone;
+use Sabre\VObject\Property;
 
 /**
  *  Extends the ICalendar interface
@@ -42,6 +43,6 @@ interface ISchedulingInformation extends ICalendar {
 	/**
 	 * @since 28.0.0
 	 */
-	public function getSchedulingTimezone(): ?VTimeZone;
+	public function getSchedulingTimezone(): ?Property;
 
 }
