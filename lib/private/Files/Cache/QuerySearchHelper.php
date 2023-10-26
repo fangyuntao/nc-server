@@ -37,41 +37,24 @@ use OCP\Files\IRootFolder;
 use OCP\Files\Mount\IMountPoint;
 use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchQuery;
+use OCP\FilesMetadata\IFilesMetadataManager;
+use OCP\FilesMetadata\Model\IMetadataQuery;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IUser;
 use Psr\Log\LoggerInterface;
 
 class QuerySearchHelper {
-	/** @var IMimeTypeLoader */
-	private $mimetypeLoader;
-	/** @var IDBConnection */
-	private $connection;
-	/** @var SystemConfig */
-	private $systemConfig;
-	private LoggerInterface $logger;
-	/** @var SearchBuilder */
-	private $searchBuilder;
-	/** @var QueryOptimizer */
-	private $queryOptimizer;
-	private IGroupManager $groupManager;
-
 	public function __construct(
-		IMimeTypeLoader $mimetypeLoader,
-		IDBConnection $connection,
-		SystemConfig $systemConfig,
-		LoggerInterface $logger,
-		SearchBuilder $searchBuilder,
-		QueryOptimizer $queryOptimizer,
-		IGroupManager $groupManager,
+		private IMimeTypeLoader $mimetypeLoader,
+		private IDBConnection $connection,
+		private SystemConfig $systemConfig,
+		private LoggerInterface $logger,
+		private SearchBuilder $searchBuilder,
+		private QueryOptimizer $queryOptimizer,
+		private IGroupManager $groupManager,
+		private IFilesMetadataManager $filesMetadataManager,
 	) {
-		$this->mimetypeLoader = $mimetypeLoader;
-		$this->connection = $connection;
-		$this->systemConfig = $systemConfig;
-		$this->logger = $logger;
-		$this->searchBuilder = $searchBuilder;
-		$this->queryOptimizer = $queryOptimizer;
-		$this->groupManager = $groupManager;
 	}
 
 	protected function getQueryBuilder() {
@@ -144,6 +127,36 @@ class QuerySearchHelper {
 			));
 	}
 
+
+	/**
+	 * left join metadata and its indexes to the filecache table
+	 *
+	 * @param CacheQueryBuilder $query
+	 * @param ISearchQuery $searchQuery
+	 *
+	 * @return IMetadataQuery|null
+	 */
+	protected function equipQueryForMetadata(CacheQueryBuilder $query, ISearchQuery $searchQuery): ?IMetadataQuery {
+		$metadataQuery = $this->filesMetadataManager->getMetadataQuery($query, 'file', 'fileid');
+		$metadataQuery->retrieveMetadata();
+
+		$order = $searchQuery->getOrder();
+		if ($order) {
+			foreach ($order as $orderField) {
+				$metadataQuery->joinIndex($orderField->getField());
+				$query->orderBy($metadataQuery->getMetadataValueIntField(), $orderField->getDirection());
+			}
+		}
+
+		// TODO: add filter on metadatakey / metadatavalue
+		// is it possible to get information from the webdav request ?
+		// $expr = $query->expr();
+		// $query->andWhere($expr->eq($metadataQuery->getMetadataKeyField(), $query->createNamedParameter('my_key')));
+		// $query->andWhere($expr->eq($metadataQuery->getMetadataValueField(), $query->createNamedParameter('my_value')));
+
+		return $metadataQuery;
+	}
+
 	/**
 	 * Perform a file system search in multiple caches
 	 *
@@ -175,6 +188,7 @@ class QuerySearchHelper {
 		$query = $builder->selectFileCache('file', false);
 
 		$requestedFields = $this->searchBuilder->extractRequestedFields($searchQuery->getSearchOperation());
+
 		if (in_array('systemtag', $requestedFields)) {
 			$this->equipQueryForSystemTags($query, $this->requireUser($searchQuery));
 		}
@@ -182,12 +196,14 @@ class QuerySearchHelper {
 			$this->equipQueryForDavTags($query, $this->requireUser($searchQuery));
 		}
 
+		$metadataQuery = $this->equipQueryForMetadata($query, $searchQuery);
 		$this->applySearchConstraints($query, $searchQuery, $caches);
 
 		$result = $query->execute();
 		$files = $result->fetchAll();
 
-		$rawEntries = array_map(function (array $data) {
+		$rawEntries = array_map(function (array $data) use ($metadataQuery) {
+			$data['metadata'] = $metadataQuery?->extractMetadata($data)?->asArray() ?? [];
 			return Cache::cacheEntryFromData($data, $this->mimetypeLoader);
 		}, $files);
 
