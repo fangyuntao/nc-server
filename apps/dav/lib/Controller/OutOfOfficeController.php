@@ -54,7 +54,7 @@ class OutOfOfficeController extends OCSController {
 	 * @NoCSRFRequired
 	 *
 	 * @param string $userId The user id to get out-of-office data for.
-	 * @return DataResponse<Http::STATUS_OK, ?DavOutOfOfficeData, array{}>
+	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_NOT_FOUND, ?DavOutOfOfficeData, array{}>
 	 *
 	 * 200: Out-of-office data
 	 * 404: No out-of-office data was found
@@ -68,6 +68,7 @@ class OutOfOfficeController extends OCSController {
 
 		return new DataResponse([
 			'id' => $data->getId(),
+			'userId' => $data->getUserId(),
 			'firstDay' => $data->getFirstDay(),
 			'lastDay' => $data->getLastDay(),
 			'status' => $data->getStatus(),
