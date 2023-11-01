@@ -4,6 +4,7 @@
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Richard Steinmetz <richard@steinmetz.cloud>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -32,5 +33,6 @@ return [
 	],
 	'ocs' => [
 		['name' => 'direct#getUrl', 'url' => '/api/v1/direct', 'verb' => 'POST'],
+		['name' => 'out_of_office#getCurrentOutOfOfficeData', 'url' => '/api/v1/outOfOffice/{userId}', 'verb' => 'GET'],
 	],
 ];
