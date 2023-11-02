@@ -106,11 +106,9 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @see self::TYPE_FLOAT
 	 * @since 28.0.0
 	 */
-	public function confirmType(string $type): self {
+	public function assertType(string $type): self {
 		if (!$this->isType($type)) {
-			throw new FilesMetadataTypeException(
-				'type is \'' . $this->getType() . '\', expecting \'' . $type . '\''
-			);
+			throw new FilesMetadataTypeException('type is \'' . $this->getType() . '\', expecting \'' . $type . '\'');
 		}
 
 		return $this;
@@ -125,7 +123,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueString(string $value): self {
-		$this->confirmType(self::TYPE_STRING);
+		$this->assertType(self::TYPE_STRING);
 		$this->value = $value;
 
 		return $this;
@@ -140,9 +138,8 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueInt(int $value): self {
-		$this->confirmType(self::TYPE_INT);
+		$this->assertType(self::TYPE_INT);
 		$this->value = $value;
-
 
 		return $this;
 	}
@@ -156,9 +153,8 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueFloat(float $value): self {
-		$this->confirmType(self::TYPE_FLOAT);
+		$this->assertType(self::TYPE_FLOAT);
 		$this->value = $value;
-
 
 		return $this;
 	}
@@ -172,7 +168,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueBool(bool $value): self {
-		$this->confirmType(self::TYPE_BOOL);
+		$this->assertType(self::TYPE_BOOL);
 		$this->value = $value;
 
 
@@ -188,9 +184,8 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueArray(array $value): self {
-		$this->confirmType(self::TYPE_ARRAY);
+		$this->assertType(self::TYPE_ARRAY);
 		$this->value = $value;
-
 
 		return $this;
 	}
@@ -204,7 +199,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueStringList(array $value): self {
-		$this->confirmType(self::TYPE_STRING_LIST);
+		$this->assertType(self::TYPE_STRING_LIST);
 		// TODO confirm value is an array or string ?
 		$this->value = $value;
 
@@ -220,7 +215,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function setValueIntList(array $value): self {
-		$this->confirmType(self::TYPE_INT_LIST);
+		$this->assertType(self::TYPE_INT_LIST);
 		// TODO confirm value is an array of int ?
 		$this->value = $value;
 
@@ -236,7 +231,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueString(): string {
-		$this->confirmType(self::TYPE_STRING);
+		$this->assertType(self::TYPE_STRING);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}
@@ -252,7 +247,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueInt(): int {
-		$this->confirmType(self::TYPE_INT);
+		$this->assertType(self::TYPE_INT);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}
@@ -268,7 +263,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueFloat(): float {
-		$this->confirmType(self::TYPE_FLOAT);
+		$this->assertType(self::TYPE_FLOAT);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}
@@ -284,7 +279,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueBool(): bool {
-		$this->confirmType(self::TYPE_BOOL);
+		$this->assertType(self::TYPE_BOOL);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}
@@ -300,7 +295,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueArray(): array {
-		$this->confirmType(self::TYPE_ARRAY);
+		$this->assertType(self::TYPE_ARRAY);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}
@@ -316,7 +311,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueStringList(): array {
-		$this->confirmType(self::TYPE_STRING_LIST);
+		$this->assertType(self::TYPE_STRING_LIST);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}
@@ -332,7 +327,7 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 	 * @since 28.0.0
 	 */
 	public function getValueIntList(): array {
-		$this->confirmType(self::TYPE_INT_LIST);
+		$this->assertType(self::TYPE_INT_LIST);
 		if (null === $this->value) {
 			throw new FilesMetadataNotFoundException('value is not set');
 		}

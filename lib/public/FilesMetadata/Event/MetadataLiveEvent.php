@@ -25,9 +25,7 @@ declare(strict_types=1);
 
 namespace OCP\FilesMetadata\Event;
 
-use OC\FilesMetadata\Event\MetadataEventBase;
-use OCP\Files\Node;
-use OCP\FilesMetadata\Model\IFilesMetadata;
+use OCP\FilesMetadata\AMetadataEvent;
 
 /**
  * MetadataLiveEvent is an event initiated when a file is created or updated.
@@ -35,22 +33,15 @@ use OCP\FilesMetadata\Model\IFilesMetadata;
  * contains the currently known metadata.
  *
  * Setting new metadata, or modifying already existing metadata with different value, will trigger
- * the save of the metadata in the databas.
+ * the save of the metadata in the database.
  *
- * @see MetadataEventBase::getMetadata()
- * @see MetadataEventBase::getNode()
+ * @see AMetadataEvent::getMetadata()
+ * @see AMetadataEvent::getNode()
  * @see MetadataLiveEvent::requestBackgroundJob()
  * @since 28.0.0
  */
-class MetadataLiveEvent extends MetadataEventBase {
+class MetadataLiveEvent extends AMetadataEvent {
 	private bool $runAsBackgroundJob = false;
-
-	public function __construct(
-		Node $node,
-		IFilesMetadata $metadata
-	) {
-		parent::__construct($node, $metadata);
-	}
 
 	/**
 	 * For heavy process, call this method if your app prefers to update metadata on a

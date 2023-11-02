@@ -6,6 +6,7 @@
  * @author Joas Schilling <coding@schilljs.com>
  * @author Julius Härtl <jus@bitgrid.net>
  * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Maxence Lange <maxence@artificial-owl.com>
  * @author Morris Jobke <hey@morrisjobke.de>
  * @author Piotr M <mrow4a@yahoo.com>
  * @author Robin Appelman <robin@icewind.nl>
@@ -32,7 +33,6 @@
  */
 namespace OC\Files;
 
-use OC\FilesMetadata\Model\FilesMetadata;
 use OCA\Files_Sharing\ISharedStorage;
 use OCP\Files\Cache\ICacheEntry;
 use OCP\Files\IHomeStorage;
@@ -418,6 +418,10 @@ class FileInfo implements \OCP\Files\FileInfo, \ArrayAccess {
 		return $this->data['parent'] ?? -1;
 	}
 
+	/**
+	 * @inheritDoc
+	 * @return array<string, int|string|bool|float|string[]|int[]>
+	 */
 	public function getMetadata(): array {
 		return $this->data['metadata'] ?? [];
 	}

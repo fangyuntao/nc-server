@@ -25,24 +25,16 @@ declare(strict_types=1);
 
 namespace OCP\FilesMetadata\Event;
 
-use OC\FilesMetadata\Event\MetadataEventBase;
-use OCP\Files\Node;
-use OCP\FilesMetadata\Model\IFilesMetadata;
+use OCP\FilesMetadata\AMetadataEvent;
 
 /**
  * MetadataBackgroundEvent is an event similar to MetadataLiveEvent but dispatched
  * on a background thread instead of live thread. Meaning there is no limit to
  * the time required for the generation of your metadata.
  *
- * @see MetadataEventBase::getMetadata()
- * @see MetadataEventBase::getNode()
+ * @see AMetadataEvent::getMetadata()
+ * @see AMetadataEvent::getNode()
  * @since 28.0.0
  */
-class MetadataBackgroundEvent extends MetadataEventBase {
-	public function __construct(
-		Node $node,
-		IFilesMetadata $metadata
-	) {
-		parent::__construct($node, $metadata);
-	}
+class MetadataBackgroundEvent extends AMetadataEvent {
 }

@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Maxence Lange <maxence@artificial-owl.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Tobias Kaminsky <tobias@kaminsky.me>
@@ -140,19 +141,14 @@ class QuerySearchHelper {
 		$metadataQuery = $this->filesMetadataManager->getMetadataQuery($query, 'file', 'fileid');
 		$metadataQuery->retrieveMetadata();
 
-		$order = $searchQuery->getOrder();
-		if ($order) {
-			foreach ($order as $orderField) {
-				$metadataQuery->joinIndex($orderField->getField());
-				$query->orderBy($metadataQuery->getMetadataValueIntField(), $orderField->getDirection());
+		foreach ($searchQuery->getOrder() as $order) {
+			if ($order->getExtra() !== 'metadata') {
+				continue; // only metadata search order are managed here.
 			}
-		}
 
-		// TODO: add filter on metadatakey / metadatavalue
-		// is it possible to get information from the webdav request ?
-		// $expr = $query->expr();
-		// $query->andWhere($expr->eq($metadataQuery->getMetadataKeyField(), $query->createNamedParameter('my_key')));
-		// $query->andWhere($expr->eq($metadataQuery->getMetadataValueField(), $query->createNamedParameter('my_value')));
+			$alias = $metadataQuery->joinIndex($order->getField());
+			$query->addOrderBy($metadataQuery->getMetadataValueIntField($alias), $order->getDirection());
+		}
 
 		return $metadataQuery;
 	}

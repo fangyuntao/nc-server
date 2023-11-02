@@ -37,6 +37,9 @@ use OCP\FilesMetadata\Exceptions\FilesMetadataTypeException;
  * @since 28.0.0
  */
 interface IMetadataValueWrapper extends JsonSerializable {
+	/**
+	 * @since 28.0.0
+	 */
 	public const TYPE_STRING = 'string';
 	public const TYPE_INT = 'int';
 	public const TYPE_FLOAT = 'float';
@@ -109,7 +112,7 @@ interface IMetadataValueWrapper extends JsonSerializable {
 	 * @see self::TYPE_FLOAT
 	 * @since 28.0.0
 	 */
-	public function confirmType(string $type): self;
+	public function assertType(string $type): self;
 
 	/**
 	 * set a string value

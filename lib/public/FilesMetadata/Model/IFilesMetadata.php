@@ -26,7 +26,6 @@ declare(strict_types=1);
 namespace OCP\FilesMetadata\Model;
 
 use JsonSerializable;
-use OC\FilesMetadata\Model\MetadataValueWrapper;
 use OCP\FilesMetadata\Exceptions\FilesMetadataNotFoundException;
 use OCP\FilesMetadata\Exceptions\FilesMetadataTypeException;
 
@@ -234,6 +233,7 @@ interface IFilesMetadata extends JsonSerializable {
 	 * @param float $value metadata value
 	 *
 	 * @return self
+	 * @since 28.0.0
 	 */
 	public function setFloat(string $key, float $value): self;
 
@@ -300,6 +300,7 @@ interface IFilesMetadata extends JsonSerializable {
 	 * @param string $keyPrefix metadata key prefix
 	 *
 	 * @return self
+	 * @since 28.0.0
 	 */
 	public function removeStartsWith(string $keyPrefix): self;
 

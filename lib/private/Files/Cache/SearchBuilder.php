@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2017 Robin Appelman <robin@icewind.nl>
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Maxence Lange <maxence@artificial-owl.com>
  * @author Robin Appelman <robin@icewind.nl>
  * @author Roeland Jago Douma <roeland@famdouma.nl>
  * @author Tobias Kaminsky <tobias@kaminsky.me>
@@ -76,7 +77,7 @@ class SearchBuilder {
 			return array_reduce($operator->getArguments(), function (array $fields, ISearchOperator $operator) {
 				return array_unique(array_merge($fields, $this->extractRequestedFields($operator)));
 			}, []);
-		} elseif ($operator instanceof ISearchComparison) {
+		} elseif ($operator instanceof ISearchComparison && !$operator->isExtra()) {
 			return [$operator->getField()];
 		}
 		return [];
@@ -124,6 +125,10 @@ class SearchBuilder {
 	}
 
 	private function searchComparisonToDBExpr(IQueryBuilder $builder, ISearchComparison $comparison, array $operatorMap) {
+		if ($comparison->isExtra()) {
+			return null;
+		}
+
 		$this->validateComparison($comparison);
 
 		[$field, $value, $type] = $this->getOperatorFieldAndValue($comparison);
@@ -231,6 +236,9 @@ class SearchBuilder {
 	 */
 	public function addSearchOrdersToQuery(IQueryBuilder $query, array $orders) {
 		foreach ($orders as $order) {
+			if ($order->isExtra()) {
+				continue; // extra search orders are managed elsewhere
+			}
 			$field = $order->getField();
 			if ($field === 'fileid') {
 				$field = 'file.fileid';

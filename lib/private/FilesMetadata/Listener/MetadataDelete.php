@@ -33,6 +33,8 @@ use OCP\FilesMetadata\IFilesMetadataManager;
 
 /**
  * Handle file deletion event and remove stored metadata related to the deleted file
+ *
+ * @template-implements IEventListener<NodeDeletedEvent>
  */
 class MetadataDelete implements IEventListener {
 	public function __construct(

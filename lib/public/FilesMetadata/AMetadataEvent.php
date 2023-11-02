@@ -23,20 +23,24 @@ declare(strict_types=1);
  *
  */
 
-namespace OC\FilesMetadata\Event;
+namespace OCP\FilesMetadata;
 
-use OCP\Files\Node;
 use OCP\EventDispatcher\Event;
+use OCP\Files\Node;
 use OCP\FilesMetadata\Model\IFilesMetadata;
 
 /**
  * @since 28.0.0
  */
-class MetadataEventBase extends Event {
-
+abstract class AMetadataEvent extends Event {
+	/**
+	 * @param Node $node
+	 * @param IFilesMetadata $metadata
+	 * @since 28.0.0
+	 */
 	public function __construct(
-		protected Node $node,
-		protected IFilesMetadata $metadata
+		private Node $node,
+		private IFilesMetadata $metadata
 	) {
 		parent::__construct();
 	}

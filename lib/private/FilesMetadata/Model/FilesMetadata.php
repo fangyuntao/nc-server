@@ -39,7 +39,6 @@ use OCP\FilesMetadata\Model\IMetadataValueWrapper;
  * @since 28.0.0
  */
 class FilesMetadata implements IFilesMetadata {
-
 	/** @var array<string, MetadataValueWrapper> */
 	private array $metadata = [];
 	private bool $updated = false;

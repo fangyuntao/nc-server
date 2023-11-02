@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace OC\FilesMetadata;
 
+use JsonException;
 use OC\FilesMetadata\Job\UpdateSingleMetadata;
 use OC\FilesMetadata\Listener\MetadataDelete;
 use OC\FilesMetadata\Listener\MetadataUpdate;
@@ -50,6 +51,7 @@ use OCP\FilesMetadata\Exceptions\FilesMetadataNotFoundException;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\Model\IFilesMetadata;
 use OCP\FilesMetadata\Model\IMetadataQuery;
+use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -57,11 +59,13 @@ use Psr\Log\LoggerInterface;
  * @since 28.0.0
  */
 class FilesMetadataManager implements IFilesMetadataManager {
+	public const CONFIG_KEY = 'files_metadata';
 	private const JSON_MAXSIZE = 100000;
 
 	public function __construct(
 		private IEventDispatcher $eventDispatcher,
 		private IJobList $jobList,
+		private IConfig $config,
 		private LoggerInterface $logger,
 		private MetadataRequestService $metadataRequestService,
 		private IndexRequestService $indexRequestService,
@@ -73,7 +77,6 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	 *
 	 * @param Node $node related node
 	 * @param int $process type of process
-	 * @param bool $fromScratch reset known metadata first
 	 *
 	 * @return IFilesMetadata
 	 * @throws FilesMetadataException if metadata are invalid
@@ -85,13 +88,8 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	 */
 	public function refreshMetadata(
 		Node $node,
-		int $process = self::PROCESS_LIVE,
-		bool $fromScratch = false,
+		int $process = self::PROCESS_LIVE
 	): IFilesMetadata {
-		if ($fromScratch) {
-			$this->deleteMetadata($node->getId());
-		}
-
 		try {
 			$metadata = $this->metadataRequestService->getMetadataFromFileId($node->getId());
 		} catch (FilesMetadataNotFoundException) {
@@ -134,7 +132,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	}
 
 	/**
-	 * @param IFilesMetadata $filesMetadata
+	 * @param IFilesMetadata $filesMetadata metadata
 	 *
 	 * @inheritDoc
 	 * @throws FilesMetadataException if metadata seems malformed
@@ -147,9 +145,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 
 		$json = json_encode($filesMetadata->jsonSerialize());
 		if (strlen($json) > self::JSON_MAXSIZE) {
-			throw new FilesMetadataException(
-				'json cannot exceed ' . self::JSON_MAXSIZE . ' characters long'
-			);
+			throw new FilesMetadataException('json cannot exceed ' . self::JSON_MAXSIZE . ' characters long');
 		}
 
 		try {
@@ -161,16 +157,24 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		} catch (DBException $e) {
 			// most of the logged exception are the result of race condition
 			// between 2 simultaneous process trying to create/update metadata
-			$this->logger->warning(
-				'issue while saveMetadata', ['exception' => $e, 'metadata' => $filesMetadata]
-			);
+			$this->logger->warning('issue while saveMetadata', ['exception' => $e, 'metadata' => $filesMetadata]);
 
 			return;
 		}
 
+		// update indexes
 		foreach ($filesMetadata->getIndexes() as $index) {
-			$this->indexRequestService->updateIndex($filesMetadata, $index);
+			try {
+				$this->indexRequestService->updateIndex($filesMetadata, $index);
+			} catch (DBException $e) {
+				$this->logger->warning('issue while updateIndex', ['exception' => $e]);
+			}
 		}
+
+		// update metadata list
+		$current = $this->getAllMetadata();
+		$current->import($filesMetadata->jsonSerialize());
+		$this->config->setAppValue('core', self::CONFIG_KEY, json_encode($current));
 	}
 
 	/**
@@ -193,15 +197,14 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		}
 	}
 
-
 	/**
 	 * @param IQueryBuilder $qb
 	 * @param string $fileTableAlias alias of the table that contains data about files
 	 * @param string $fileIdField alias of the field that contains file ids
 	 *
 	 * @inheritDoc
-	 * @see IMetadataQuery
 	 * @return IMetadataQuery
+	 * @see IMetadataQuery
 	 * @since 28.0.0
 	 */
 	public function getMetadataQuery(
@@ -211,6 +214,25 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	): IMetadataQuery {
 		return new MetadataQuery($qb, $fileTableAlias, $fileIdField);
 	}
+
+	/**
+	 * @inheritDoc
+	 * @return IFilesMetadata
+	 * @since 28.0.0
+	 */
+	public function getAllMetadata(): IFilesMetadata {
+		$all = new FilesMetadata();
+
+		try {
+			$data = json_decode($this->config->getAppValue('core', self::CONFIG_KEY, '[]'), true, 127, JSON_THROW_ON_ERROR);
+			$all->import($data);
+		} catch (JsonException) {
+			$this->logger->warning('issue while reading stored list of metadata. Adviced to run ./occ files:scan --all --generate-metadata');
+		}
+
+		return $all;
+	}
+
 
 	/**
 	 * load listeners

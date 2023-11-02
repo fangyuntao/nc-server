@@ -31,7 +31,6 @@ namespace OCP\FilesMetadata\Model;
  * @since 28.0.0
  */
 interface IMetadataQuery {
-
 	/**
 	 * Add metadata linked to file id to the query
 	 *
@@ -58,58 +57,58 @@ interface IMetadataQuery {
 	 * @param string $metadataKey metadata key
 	 * @param bool $enforce limit the request only to existing metadata
 	 *
+	 * @return string generated table alias
 	 * @since 28.0.0
 	 */
-	public function joinIndex(string $metadataKey, bool $enforce = false): void;
-
-	/**
-	 * entry must have a specific metadata set
-	 *
-	 * @param string $metadataKey metadata key
-	 *
-	 * @since 28.0.0
-	 */
-	public function enforceMetadataKey(string $metadataKey): void;
+	public function joinIndex(string $metadataKey, bool $enforce = false): string;
 
 	/**
 	 * entry must have a specific value (string) for linked metadata
 	 *
+	 * @param string $aliasIndex table alias related to metadata key
 	 * @param string $value metadata value
 	 *
 	 * @since 28.0.0
 	 */
-	public function enforceMetadataValue(string $value): void;
+	public function enforceMetadataValue(string $aliasIndex, string $value): void;
 
 	/**
 	 * entry must have a specific value (int) for linked metadata
 	 *
+	 * @param string $aliasIndex table alias related to metadata key
 	 * @param int $value metadata value
 	 *
 	 * @since 28.0.0
 	 */
-	public function enforceMetadataValueInt(int $value): void;
+	public function enforceMetadataValueInt(string $aliasIndex, int $value): void;
 
 	/**
 	 * returns the name of the field for metadata key to be used in query expressions
 	 *
+	 * @param string $aliasIndex table alias related to metadata key
+	 *
 	 * @return string
 	 * @since 28.0.0
 	 */
-	public function getMetadataKeyField(): string;
+	public function getMetadataKeyField(string $aliasIndex): string;
 
 	/**
 	 * returns the name of the field for metadata string value to be used in query expressions
 	 *
-	 * @return string table field
-	 * @since 28.0.0
-	 */
-	public function getMetadataValueField(): string;
-
-	/**
-	 * returns the name of the field for metadata int value to be used in query expressions
+	 * @param string $aliasIndex table alias related to metadata key
 	 *
 	 * @return string table field
 	 * @since 28.0.0
 	 */
-	public function getMetadataValueIntField(): string;
+	public function getMetadataValueField(string $aliasIndex): string;
+
+	/**
+	 * returns the name of the field for metadata int value to be used in query expressions
+	 *
+	 * @param string $aliasIndex table alias related to metadata key
+	 *
+	 * @return string table field
+	 * @since 28.0.0
+	 */
+	public function getMetadataValueIntField(string $aliasIndex): string;
 }

@@ -38,6 +38,9 @@ use OCP\FilesMetadata\Model\IMetadataQuery;
  * @since 28.0.0
  */
 interface IFilesMetadataManager {
+	/**
+	 * @since 28.0.0
+	 */
 	public const PROCESS_LIVE = 1;
 	public const PROCESS_BACKGROUND = 2;
 
@@ -52,7 +55,6 @@ interface IFilesMetadataManager {
 	 *
 	 * @param Node $node related node
 	 * @param int $process type of process
-	 * @param bool $fromScratch reset known metadata first
 	 *
 	 * @return IFilesMetadata
 	 * @see self::PROCESS_BACKGROUND
@@ -61,8 +63,7 @@ interface IFilesMetadataManager {
 	 */
 	public function refreshMetadata(
 		Node $node,
-		int $process = self::PROCESS_LIVE,
-		bool $fromScratch = false
+		int $process = self::PROCESS_LIVE
 	): IFilesMetadata;
 
 	/**
@@ -113,4 +114,10 @@ interface IFilesMetadataManager {
 		string $fileTableAlias,
 		string $fileIdField
 	): IMetadataQuery;
+
+	/**
+	 * @return IFilesMetadata
+	 * @since 28.0.0
+	 */
+	public function getAllMetadata(): IFilesMetadata;
 }

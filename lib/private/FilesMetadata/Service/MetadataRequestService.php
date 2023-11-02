@@ -141,7 +141,6 @@ class MetadataRequestService {
 	/**
 	 * generate a random token
 	 * @return string
-	 * @throws \Exception
 	 */
 	private function generateSyncToken(): string {
 		$chars = 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890';
@@ -151,7 +150,8 @@ class MetadataRequestService {
 		for ($i = 0; $i < 7; $i++) {
 			try {
 				$str .= $chars[random_int(0, $max - 2)];
-			} catch (Exception $e) {
+			} catch (\Exception $e) {
+				$this->logger->warning('exception during generateSyncToken', ['exception' => $e]);
 			}
 		}
 

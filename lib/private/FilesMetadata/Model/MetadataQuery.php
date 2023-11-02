@@ -37,12 +37,13 @@ use OCP\FilesMetadata\Model\IMetadataQuery;
  * @since 28.0.0
  */
 class MetadataQuery implements IMetadataQuery {
+	private int $aliasIndexCount = 0;
 	public function __construct(
 		private IQueryBuilder $queryBuilder,
 		private string $fileTableAlias = 'fc',
 		private string $fileIdField = 'fileid',
 		private string $alias = 'meta',
-		private string $aliasIndex = 'meta_index'
+		private string $aliasIndexPrefix = 'meta_index'
 	) {
 	}
 
@@ -69,10 +70,11 @@ class MetadataQuery implements IMetadataQuery {
 	 */
 	public function extractMetadata(array $row): IFilesMetadata {
 		$fileId = (array_key_exists($this->fileIdField, $row)) ? $row[$this->fileIdField] : 0;
-		$metadata = new FilesMetadata($fileId);
+		$metadata = new FilesMetadata((int)$fileId);
 		try {
 			$metadata->importFromDatabase($row, $this->alias . '_');
-		} catch (FilesMetadataNotFoundException $e) {
+		} catch (FilesMetadataNotFoundException) {
+			// can be ignored as files' metadata are optional and might not exist in database
 		}
 
 		return $metadata;
@@ -85,42 +87,29 @@ class MetadataQuery implements IMetadataQuery {
 	 * @inheritDoc
 	 * @since 28.0.0
 	 */
-	public function joinIndex(string $metadataKey = '', bool $enforce = false): void {
+	public function joinIndex(string $metadataKey, bool $enforce = false): string {
 		$expr = $this->queryBuilder->expr();
-		$andX = $expr->andX($expr->eq($this->aliasIndex . '.file_id', $this->fileTableAlias . '.' . $this->fileIdField));
-		$andX->add($expr->eq($this->getMetadataKeyField(), $this->queryBuilder->createNamedParameter($metadataKey)));
+		$aliasIndex = $this->aliasIndexPrefix . '_' . $this->aliasIndexCount++;
+		$andX = $expr->andX($expr->eq($aliasIndex . '.file_id', $this->fileTableAlias . '.' . $this->fileIdField));
+		$andX->add($expr->eq($this->getMetadataKeyField($aliasIndex), $this->queryBuilder->createNamedParameter($metadataKey)));
 
 		if ($enforce) {
 			$this->queryBuilder->rightJoin(
 				$this->fileTableAlias,
 				IndexRequestService::TABLE_METADATA_INDEX,
-				$this->aliasIndex,
+				$aliasIndex,
 				$andX
 			);
 		} else {
 			$this->queryBuilder->leftJoin(
 				$this->fileTableAlias,
 				IndexRequestService::TABLE_METADATA_INDEX,
-				$this->aliasIndex,
+				$aliasIndex,
 				$andX
 			);
 		}
-	}
 
-	/**
-	 * @param string $metadataKey metadata key
-	 *
-	 * @inheritDoc
-	 * @since 28.0.0
-	 */
-	public function enforceMetadataKey(string $metadataKey): void {
-		$expr = $this->queryBuilder->expr();
-		$this->queryBuilder->andWhere(
-			$expr->eq(
-				$this->getMetadataKeyField(),
-				$this->queryBuilder->createNamedParameter($metadataKey)
-			)
-		);
+		return $aliasIndex;
 	}
 
 	/**
@@ -128,11 +117,11 @@ class MetadataQuery implements IMetadataQuery {
 	 * @inheritDoc
 	 * @since 28.0.0
 	 */
-	public function enforceMetadataValue(string $value): void {
+	public function enforceMetadataValue(string $aliasIndex, string $value): void {
 		$expr = $this->queryBuilder->expr();
 		$this->queryBuilder->andWhere(
 			$expr->eq(
-				$this->getMetadataKeyField(),
+				$this->getMetadataValueField($aliasIndex),
 				$this->queryBuilder->createNamedParameter($value)
 			)
 		);
@@ -143,11 +132,11 @@ class MetadataQuery implements IMetadataQuery {
 	 * @inheritDoc
 	 * @since 28.0.0
 	 */
-	public function enforceMetadataValueInt(int $value): void {
+	public function enforceMetadataValueInt(string $aliasIndex, int $value): void {
 		$expr = $this->queryBuilder->expr();
 		$this->queryBuilder->andWhere(
 			$expr->eq(
-				$this->getMetadataValueIntField(),
+				$this->getMetadataValueIntField($aliasIndex),
 				$this->queryBuilder->createNamedParameter($value, IQueryBuilder::PARAM_INT)
 			)
 		);
@@ -158,8 +147,8 @@ class MetadataQuery implements IMetadataQuery {
 	 * @return string table field
 	 * @since 28.0.0
 	 */
-	public function getMetadataKeyField(): string {
-		return $this->aliasIndex . '.meta_key';
+	public function getMetadataKeyField(string $aliasIndex): string {
+		return $aliasIndex . '.meta_key';
 	}
 
 	/**
@@ -167,8 +156,8 @@ class MetadataQuery implements IMetadataQuery {
 	 * @return string table field
 	 * @since 28.0.0
 	 */
-	public function getMetadataValueField(): string {
-		return $this->aliasIndex . '.meta_value';
+	public function getMetadataValueField(string $aliasIndex): string {
+		return $aliasIndex . '.meta_value_string';
 	}
 
 	/**
@@ -176,7 +165,7 @@ class MetadataQuery implements IMetadataQuery {
 	 * @return string table field
 	 * @since 28.0.0
 	 */
-	public function getMetadataValueIntField(): string {
-		return $this->aliasIndex . '.meta_value_int';
+	public function getMetadataValueIntField(string $aliasIndex): string {
+		return $aliasIndex . '.meta_value_int';
 	}
 }

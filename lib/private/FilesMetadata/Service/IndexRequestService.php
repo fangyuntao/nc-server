@@ -52,40 +52,40 @@ class IndexRequestService {
 	 * @param IFilesMetadata $filesMetadata metadata
 	 * @param string $key metadata key to update
 	 *
-	 * @return void
+	 * @throws DbException
 	 */
 	public function updateIndex(IFilesMetadata $filesMetadata, string $key): void {
 		$fileId = $filesMetadata->getFileId();
+		try {
+			$metadataType = $filesMetadata->getType($key);
+		} catch (FilesMetadataNotFoundException $e) {
+			return;
+		}
 
 		/**
 		 * might look harsh, but a lot simpler than comparing current indexed data, as we can expect
 		 * conflict with a change of types.
 		 * We assume that each time one random metadata were modified we can drop all index for this
-		 * key and recreate them
+		 * key and recreate them.
+		 * To make it slightly cleaner, we'll use transaction
 		 */
+		$this->dbConnection->beginTransaction();
 		try {
 			$this->dropIndex($fileId, $key);
-		} catch (DbException $e) {
-			$this->logger->warning('issue while dropIndex', ['exception' => $e, 'fileId' => $fileId, 'key' => $key]);
-			return;
-		}
-
-		try {
-			match ($filesMetadata->getType($key)) {
-				IMetadataValueWrapper::TYPE_STRING
-				=> $this->insertIndexString($fileId, $key, $filesMetadata->get($key)),
-				IMetadataValueWrapper::TYPE_INT
-				=> $this->insertIndexInt($fileId, $key, $filesMetadata->getInt($key)),
-				IMetadataValueWrapper::TYPE_STRING_LIST
-				=> $this->insertIndexStringList($fileId, $key, $filesMetadata->getStringList($key)),
-				IMetadataValueWrapper::TYPE_INT_LIST
-				=> $this->insertIndexIntList($fileId, $key, $filesMetadata->getIntList($key))
+			match ($metadataType) {
+				IMetadataValueWrapper::TYPE_STRING => $this->insertIndexString($fileId, $key, $filesMetadata->get($key)),
+				IMetadataValueWrapper::TYPE_INT => $this->insertIndexInt($fileId, $key, $filesMetadata->getInt($key)),
+				IMetadataValueWrapper::TYPE_BOOL => $this->insertIndexBool($fileId, $key, $filesMetadata->getBool($key)),
+				IMetadataValueWrapper::TYPE_STRING_LIST => $this->insertIndexStringList($fileId, $key, $filesMetadata->getStringList($key)),
+				IMetadataValueWrapper::TYPE_INT_LIST => $this->insertIndexIntList($fileId, $key, $filesMetadata->getIntList($key))
 			};
-		} catch (DbException|FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
-			$this->logger->warning('issue while insertIndex', ['exception' => $e, 'fileId' => $fileId, 'key' => $key, 'metadata' => $filesMetadata]);
+		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException|DbException $e) {
+			$this->dbConnection->rollBack();
+			$this->logger->warning('issue while updateIndex', ['exception' => $e, 'fileId' => $fileId, 'key' => $key]);
 		}
-	}
 
+		$this->dbConnection->commit();
+	}
 
 	/**
 	 * insert a new entry in the metadata_index table for a string value
@@ -100,7 +100,7 @@ class IndexRequestService {
 		$qb = $this->dbConnection->getQueryBuilder();
 		$qb->insert(self::TABLE_METADATA_INDEX)
 		   ->setValue('meta_key', $qb->createNamedParameter($key))
-		   ->setValue('meta_value', $qb->createNamedParameter($value))
+		   ->setValue('meta_value_string', $qb->createNamedParameter($value))
 		   ->setValue('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT));
 		$qb->executeStatement();
 	}
@@ -119,6 +119,24 @@ class IndexRequestService {
 		$qb->insert(self::TABLE_METADATA_INDEX)
 		   ->setValue('meta_key', $qb->createNamedParameter($key))
 		   ->setValue('meta_value_int', $qb->createNamedParameter($value, IQueryBuilder::PARAM_INT))
+		   ->setValue('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT));
+		$qb->executeStatement();
+	}
+
+	/**
+	 * insert a new entry in the metadata_index table for a bool value
+	 *
+	 * @param int $fileId file id
+	 * @param string $key metadata key
+	 * @param bool $value metadata value
+	 *
+	 * @throws DbException
+	 */
+	public function insertIndexBool(int $fileId, string $key, bool $value): void {
+		$qb = $this->dbConnection->getQueryBuilder();
+		$qb->insert(self::TABLE_METADATA_INDEX)
+		   ->setValue('meta_key', $qb->createNamedParameter($key))
+		   ->setValue('meta_value_int', $qb->createNamedParameter(($value) ? '1' : '0', IQueryBuilder::PARAM_INT))
 		   ->setValue('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT));
 		$qb->executeStatement();
 	}
