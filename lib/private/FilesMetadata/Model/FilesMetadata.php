@@ -506,7 +506,7 @@ class FilesMetadata implements IFilesMetadata {
 			return;
 		}
 
-		throw new FilesMetadataKeyFormatException('key can only contains alphanumerical characters, and dash (-)');
+		throw new FilesMetadataKeyFormatException('key can only contains alphanumerical characters, and dash (-, _)');
 	}
 
 	/**
