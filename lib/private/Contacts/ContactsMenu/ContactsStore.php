@@ -33,6 +33,8 @@ namespace OC\Contacts\ContactsMenu;
 
 use OC\KnownUser\KnownUserService;
 use OC\Profile\ProfileManager;
+use OCA\UserStatus\Db\UserStatus;
+use OCA\UserStatus\Service\StatusService;
 use OCP\Contacts\ContactsMenu\IContactsStore;
 use OCP\Contacts\ContactsMenu\IEntry;
 use OCP\Contacts\IManager;
@@ -46,6 +48,7 @@ use OCP\L10N\IFactory as IL10NFactory;
 class ContactsStore implements IContactsStore {
 	public function __construct(
 		private IManager $contactsManager,
+		private ?StatusService $userStatusService,
 		private IConfig $config,
 		private ProfileManager $profileManager,
 		private IUserManager $userManager,
@@ -70,15 +73,29 @@ class ContactsStore implements IContactsStore {
 		if ($offset !== null) {
 			$options['offset'] = $offset;
 		}
+		$recentStatusUids = $this->userStatusService?->findAllRecentStatusChanges($limit) ?? [];
 
-		$allContacts = $this->contactsManager->search(
-			$filter ?? '',
-			[
-				'FN',
-				'EMAIL'
-			],
-			$options
-		);
+		// Search by status if there is no filter and statuses are available
+		if (($filter === null || $filter === '') && $offset === null && !empty($recentStatusUids)) {
+			$allContacts = array_filter(array_map(function(UserStatus $userStatus) use ($options) {
+				return $this->contactsManager->search(
+					$userStatus->getUserId(),
+					[
+						'UID',
+					],
+					$options
+				)[0] ?? null;
+			}, $recentStatusUids));
+		} else {
+			$allContacts = $this->contactsManager->search(
+				$filter ?? '',
+				[
+					'FN',
+					'EMAIL'
+				],
+				$options
+			);
+		}
 
 		$userId = $user->getUID();
 		$contacts = array_filter($allContacts, function ($contact) use ($userId) {
