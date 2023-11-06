@@ -583,11 +583,12 @@ class StatusService {
 			return;
 		}
 
-		if($status->getMessage() === null) {
-			$this->setStatus($userId, $status->getStatus(), $this->timeFactory->getTime(), true);
+		if($status->getMessage() !== null) {
+			$this->setUserStatus($userId, $status->getStatus(), $status->getMessage(), false, $status->getCustomMessage());
 			return;
 		}
 
-		$this->setUserStatus($userId, $status->getStatus(), $status->getMessage(), false, $status->getCustomMessage());
+		$this->setStatus($userId, $status->getStatus(), $this->timeFactory->getTime(), true);
+
 	}
 }

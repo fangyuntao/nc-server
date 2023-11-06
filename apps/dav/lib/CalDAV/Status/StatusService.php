@@ -79,7 +79,7 @@ class StatusService {
 								private IL10N $l10n,
 								private FreeBusyGenerator $generator){}
 
-	public function processCalendarAvailability(User $user, string $availability): ?Status {
+	public function processCalendarAvailability(User $user, ?string $availability): ?Status {
 		$userId = $user->getUID();
 		$email = $user->getEMailAddress();
 		if($email === null) {
@@ -142,7 +142,7 @@ class StatusService {
 				continue;
 			}
 
-			/** @var ?Component\VTimeZone $ctz */
+			/** @var Component\VTimeZone|null $ctz */
 			$ctz = $calendarObject->getSchedulingTimezone();
 			if ($ctz !== null) {
 				$calendarTimeZone = $ctz->getTimeZone();
