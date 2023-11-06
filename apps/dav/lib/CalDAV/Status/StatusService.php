@@ -26,10 +26,9 @@
 declare(strict_types=1);
 
 /**
- * @copyright Copyright (c) 2020, Georg Ehrke
+ * @copyright 2023 Anna Larch <anna.larch@gmx.net>
  *
- * @author Georg Ehrke <oc.list@georgehrke.com>
- * @author Joas Schilling <coding@schilljs.com>
+ * @author Anna Larch <anna.larch@gmx.net>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -55,7 +54,7 @@ use OCA\DAV\CalDAV\CalendarImpl;
 use OCA\DAV\CalDAV\FreeBusy\FreeBusyGenerator;
 use OCA\DAV\CalDAV\InvitationResponse\InvitationResponseServer;
 use OCA\DAV\CalDAV\IUser;
-use OCA\DAV\CalDAV\Schedule\Plugin;
+use OCA\DAV\CalDAV\Schedule\Plugin as SchedulePlugin;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Calendar\IManager;
 use OCP\Calendar\ISchedulingInformation;
@@ -65,6 +64,7 @@ use OCP\UserStatus\IUserStatus;
 use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\DAV\Exception\NotAuthenticated;
 use Sabre\DAVACL\Exception\NeedPrivileges;
+use Sabre\DAVACL\Plugin as AclPlugin;
 use Sabre\VObject\Component;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
@@ -77,8 +77,7 @@ class StatusService {
 								private IManager $calendarManager,
 								private InvitationResponseServer $server,
 								private IL10N $l10n,
-								private FreeBusyGenerator $generator,
-								private VCalendar $calendar){}
+								private FreeBusyGenerator $generator){}
 
 	public function processCalendarAvailability(User $user, string $availability): ?Status {
 		$userId = $user->getUID();
@@ -89,11 +88,11 @@ class StatusService {
 
 		$server = $this->server->getServer();
 
-		/** @var Plugin $schedulingPlugin */
+		/** @var SchedulePlugin $schedulingPlugin */
 		$schedulingPlugin = $server->getPlugin('caldav-schedule');
 		$caldavNS = '{'.$schedulingPlugin::NS_CALDAV.'}';
 
-		/** @var \Sabre\DAVACL\Plugin $aclPlugin */
+		/** @var AclPlugin $aclPlugin */
 		$aclPlugin = $server->getPlugin('acl');
 		if ('mailto:' === substr($email, 0, 7)) {
 			$email = substr($email, 7);
@@ -122,7 +121,8 @@ class StatusService {
 			return null;
 		}
 
-		$calendarTimeZone = $this->timeFactory->now()->getTimezone();
+		$now = $this->timeFactory->now();
+		$calendarTimeZone = $now->getTimezone();
 		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $userId);
 		if(empty($calendars)) {
 			return null;
@@ -136,13 +136,13 @@ class StatusService {
 			}
 
 			$sct = $calendarObject->getSchedulingTransparency();
-			if ($sct !== null && ScheduleCalendarTransp::TRANSPARENT == $sct->getValue()) {
+			if ($sct !== null && ScheduleCalendarTransp::TRANSPARENT == strtolower($sct->getValue())) {
 				// If a calendar is marked as 'transparent', it means we must
 				// ignore it for free-busy purposes.
 				continue;
 			}
 
-			/** @var Component\VTimeZone $ctz */
+			/** @var ?Component\VTimeZone $ctz */
 			$ctz = $calendarObject->getSchedulingTimezone();
 			if ($ctz !== null) {
 				$calendarTimeZone = $ctz->getTimeZone();
@@ -151,8 +151,8 @@ class StatusService {
 		}
 
 		// Query the next hour
-		$dtStart = $this->timeFactory->now();
-		$dtEnd = date_create_immutable('+15 minutes');
+		$dtStart = $now;
+		$dtEnd = \DateTimeImmutable::createFromMutable($this->timeFactory->getDateTime('+1 hour'));
 		$query->setTimerangeStart($dtStart);
 		$query->setTimerangeEnd($dtEnd);
 		$calendarEvents = $this->calendarManager->searchForPrincipal($query);
@@ -162,20 +162,21 @@ class StatusService {
 			return null;
 		}
 
+		$calendar = $this->generator->getVCalendar();
 		foreach ($calendarEvents as $calendarEvent) {
-			$vEvent = new VEvent($this->calendar, 'VEVENT');
+			$vEvent = new VEvent($calendar, 'VEVENT');
 			foreach($calendarEvent['objects'] as $component) {
 				foreach ($component as $key =>  $value) {
 					$vEvent->add($key, $value[0]);
 				}
 			}
-			$this->calendar->add($vEvent);
+			$calendar->add($vEvent);
 		}
 
-		$this->calendar->METHOD = 'REQUEST';
+		$calendar->METHOD = 'REQUEST';
 
-		$this->generator->setBaseObject($this->calendar);
-		$this->generator->setObjects($this->calendar);
+		$this->generator->setBaseObject($calendar);
+		$this->generator->setObjects($calendar);
 		$this->generator->setTimeRange($dtStart, $dtEnd);
 		$this->generator->setTimeZone($calendarTimeZone);
 

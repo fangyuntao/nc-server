@@ -27,10 +27,15 @@ namespace OCA\DAV\CalDAV\FreeBusy;
 
 use DateTimeInterface;
 use DateTimeZone;
+use Sabre\VObject\Component\VCalendar;
 
 class FreeBusyGenerator extends \Sabre\VObject\FreeBusyGenerator {
 
 	public function __construct() {
 		parent::__construct();
+	}
+
+	public function getVCalendar(): VCalendar {
+		return new VCalendar();
 	}
 }

@@ -7,6 +7,7 @@ declare(strict_types=1);
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
  * @author Joas Schilling <coding@schilljs.com>
+ * @author Anna Larch <anna.larch@gmx.net>
  *
  * @license GNU AGPL version 3 or any later version
  *
@@ -26,10 +27,6 @@ declare(strict_types=1);
  */
 namespace OCA\UserStatus\Service;
 
-use DateTimeZone;
-use OC\Calendar\CalendarQuery;
-use OCA\DAV\CalDAV\InvitationResponse\InvitationResponseServer;
-use OCA\DAV\CalDAV\Schedule\Plugin;
 use OCA\DAV\CalDAV\Status\StatusService as CalendarStatusService;
 use OCA\UserStatus\Db\UserStatus;
 use OCA\UserStatus\Db\UserStatusMapper;
@@ -40,24 +37,12 @@ use OCA\UserStatus\Exception\InvalidStatusTypeException;
 use OCA\UserStatus\Exception\StatusMessageTooLongException;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\Calendar\ICalendar;
-use OCP\Calendar\IManager;
 use OCP\Calendar\ISchedulingInformation;
 use OCP\DB\Exception;
 use OCP\IConfig;
 use OCP\IEmojiHelper;
 use OCP\IUserManager;
 use OCP\UserStatus\IUserStatus;
-use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
-use Sabre\DAV\Exception\NotAuthenticated;
-use Sabre\DAVACL\Exception\NeedPrivileges;
-use Sabre\VObject\Component;
-use Sabre\VObject\Component\VCalendar;
-use Sabre\VObject\Component\VEvent;
-use Sabre\VObject\FreeBusyGenerator;
-use Sabre\VObject\Parameter;
-use Sabre\VObject\Property;
-use Sabre\VObject\Reader;
 use function in_array;
 
 /**
