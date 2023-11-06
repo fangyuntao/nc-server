@@ -387,9 +387,9 @@ class MetadataValueWrapper implements IMetadataValueWrapper {
 		return $this;
 	}
 
-	public function jsonSerialize(): array {
+	public function jsonSerialize(bool $emptyValues = false): array {
 		return [
-			'value' => $this->value,
+			'value' => ($emptyValues) ? null : $this->value,
 			'type' => $this->getType(),
 			'indexed' => $this->isIndexed()
 		];

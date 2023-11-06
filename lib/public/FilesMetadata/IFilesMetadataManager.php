@@ -83,6 +83,7 @@ interface IFilesMetadataManager {
 	 * on update, a check on syncToken is done to avoid conflict (race condition)
 	 *
 	 * @param IFilesMetadata $filesMetadata
+	 *
 	 * @throws FilesMetadataException if metadata seems malformed
 	 * @since 28.0.0
 	 */
@@ -105,8 +106,8 @@ interface IFilesMetadataManager {
 	 * @param string $fileTableAlias alias of the table that contains data about files
 	 * @param string $fileIdField alias of the field that contains file ids
 	 *
-	 * @see IMetadataQuery
 	 * @return IMetadataQuery
+	 * @see IMetadataQuery
 	 * @since 28.0.0
 	 */
 	public function getMetadataQuery(
@@ -116,8 +117,20 @@ interface IFilesMetadataManager {
 	): IMetadataQuery;
 
 	/**
+	 * returns all type of metadata currently available.
+	 * The list is stored in a IFilesMetadata with null values but correct type.
+	 *
 	 * @return IFilesMetadata
 	 * @since 28.0.0
 	 */
-	public function getAllMetadata(): IFilesMetadata;
+	public function getKnownMetadata(): IFilesMetadata;
+
+	/**
+	 * initiate a metadata key with its type.
+	 * The call is mandatory before using the metadata property in a webdav request.
+	 *
+	 * @param string $key metadata key
+	 * @param string $type metadata type
+	 */
+	public function initMetadataIndex(string $key, string $type): void;
 }

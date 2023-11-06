@@ -101,6 +101,16 @@ interface IFilesMetadata extends JsonSerializable {
 	public function getIndexes(): array;
 
 	/**
+	 * returns true if key exists and is set as indexed
+	 *
+	 * @param string $key metadata key
+	 *
+	 * @return bool
+	 * @since 28.0.0
+	 */
+	public function isIndex(string $key): bool;
+
+	/**
 	 * returns string value for a metadata key
 	 *
 	 * @param string $key metadata key

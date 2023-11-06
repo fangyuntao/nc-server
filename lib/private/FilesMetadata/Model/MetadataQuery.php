@@ -29,17 +29,20 @@ use OC\FilesMetadata\Service\IndexRequestService;
 use OC\FilesMetadata\Service\MetadataRequestService;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\FilesMetadata\Exceptions\FilesMetadataNotFoundException;
+use OCP\FilesMetadata\Exceptions\FilesMetadataTypeException;
 use OCP\FilesMetadata\Model\IFilesMetadata;
 use OCP\FilesMetadata\Model\IMetadataQuery;
+use OCP\FilesMetadata\Model\IMetadataValueWrapper;
 
 /**
  * @inheritDoc
  * @since 28.0.0
  */
 class MetadataQuery implements IMetadataQuery {
-	private int $aliasIndexCount = 0;
+	private array $knownJoinedIndex = [];
 	public function __construct(
 		private IQueryBuilder $queryBuilder,
+		private IFilesMetadata $knownMetadata,
 		private string $fileTableAlias = 'fc',
 		private string $fileIdField = 'fileid',
 		private string $alias = 'meta',
@@ -88,10 +91,16 @@ class MetadataQuery implements IMetadataQuery {
 	 * @since 28.0.0
 	 */
 	public function joinIndex(string $metadataKey, bool $enforce = false): string {
+		if (array_key_exists($metadataKey, $this->knownJoinedIndex)) {
+			return $this->knownJoinedIndex[$metadataKey];
+		}
+
+		$aliasIndex = $this->aliasIndexPrefix . '_' . count($this->knownJoinedIndex);
+		$this->knownJoinedIndex[$metadataKey] = $aliasIndex;
+
 		$expr = $this->queryBuilder->expr();
-		$aliasIndex = $this->aliasIndexPrefix . '_' . $this->aliasIndexCount++;
 		$andX = $expr->andX($expr->eq($aliasIndex . '.file_id', $this->fileTableAlias . '.' . $this->fileIdField));
-		$andX->add($expr->eq($this->getMetadataKeyField($aliasIndex), $this->queryBuilder->createNamedParameter($metadataKey)));
+		$andX->add($expr->eq($this->getMetadataKeyField($metadataKey), $this->queryBuilder->createNamedParameter($metadataKey)));
 
 		if ($enforce) {
 			$this->queryBuilder->rightJoin(
@@ -113,59 +122,44 @@ class MetadataQuery implements IMetadataQuery {
 	}
 
 	/**
-	 * @param string $value metadata value
-	 * @inheritDoc
-	 * @since 28.0.0
+	 * @throws FilesMetadataNotFoundException
 	 */
-	public function enforceMetadataValue(string $aliasIndex, string $value): void {
-		$expr = $this->queryBuilder->expr();
-		$this->queryBuilder->andWhere(
-			$expr->eq(
-				$this->getMetadataValueField($aliasIndex),
-				$this->queryBuilder->createNamedParameter($value)
-			)
-		);
-	}
+	public function joinedTableAlias(string $metadataKey): string {
+		if (!array_key_exists($metadataKey, $this->knownJoinedIndex)) {
+			throw new FilesMetadataNotFoundException('related table not initiated, you need to use leftJoin() first.');
+		}
 
-	/**
-	 * @param int $value metadata value
-	 * @inheritDoc
-	 * @since 28.0.0
-	 */
-	public function enforceMetadataValueInt(string $aliasIndex, int $value): void {
-		$expr = $this->queryBuilder->expr();
-		$this->queryBuilder->andWhere(
-			$expr->eq(
-				$this->getMetadataValueIntField($aliasIndex),
-				$this->queryBuilder->createNamedParameter($value, IQueryBuilder::PARAM_INT)
-			)
-		);
+		return $this->knownJoinedIndex[$metadataKey];
 	}
 
 	/**
 	 * @inheritDoc
+	 *
+	 * @param string $metadataKey metadata key
+	 *
 	 * @return string table field
+	 * @throws FilesMetadataNotFoundException
 	 * @since 28.0.0
 	 */
-	public function getMetadataKeyField(string $aliasIndex): string {
-		return $aliasIndex . '.meta_key';
+	public function getMetadataKeyField(string $metadataKey): string {
+		return $this->joinedTableAlias($metadataKey) . '.meta_key';
 	}
 
 	/**
 	 * @inheritDoc
+	 *
+	 * @param string $metadataKey metadata key
+	 *
 	 * @return string table field
+	 * @throws FilesMetadataNotFoundException if metadataKey is not known
+	 * @throws FilesMetadataTypeException is metadataKey is not set as indexed
 	 * @since 28.0.0
 	 */
-	public function getMetadataValueField(string $aliasIndex): string {
-		return $aliasIndex . '.meta_value_string';
-	}
-
-	/**
-	 * @inheritDoc
-	 * @return string table field
-	 * @since 28.0.0
-	 */
-	public function getMetadataValueIntField(string $aliasIndex): string {
-		return $aliasIndex . '.meta_value_int';
+	public function getMetadataValueField(string $metadataKey): string {
+		return match ($this->knownMetadata->getType($metadataKey)) {
+			IMetadataValueWrapper::TYPE_STRING => $this->joinedTableAlias($metadataKey) . '.meta_value_string',
+			IMetadataValueWrapper::TYPE_INT, IMetadataValueWrapper::TYPE_BOOL => $this->joinedTableAlias($metadataKey) . '.meta_value_int',
+			default => throw new FilesMetadataTypeException('metadata is not set as indexed'),
+		};
 	}
 }

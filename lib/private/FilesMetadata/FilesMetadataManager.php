@@ -51,6 +51,7 @@ use OCP\FilesMetadata\Exceptions\FilesMetadataNotFoundException;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\Model\IFilesMetadata;
 use OCP\FilesMetadata\Model\IMetadataQuery;
+use OCP\FilesMetadata\Model\IMetadataValueWrapper;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
@@ -61,6 +62,8 @@ use Psr\Log\LoggerInterface;
 class FilesMetadataManager implements IFilesMetadataManager {
 	public const CONFIG_KEY = 'files_metadata';
 	private const JSON_MAXSIZE = 100000;
+
+	private ?IFilesMetadata $all = null;
 
 	public function __construct(
 		private IEventDispatcher $eventDispatcher,
@@ -171,9 +174,9 @@ class FilesMetadataManager implements IFilesMetadataManager {
 			}
 		}
 
-		// update metadata list
-		$current = $this->getAllMetadata();
-		$current->import($filesMetadata->jsonSerialize());
+		// update metadata types list
+		$current = $this->getKnownMetadata();
+		$current->import($filesMetadata->jsonSerialize(true));
 		$this->config->setAppValue('core', self::CONFIG_KEY, json_encode($current));
 	}
 
@@ -212,7 +215,7 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		string $fileTableAlias,
 		string $fileIdField
 	): IMetadataQuery {
-		return new MetadataQuery($qb, $fileTableAlias, $fileIdField);
+		return new MetadataQuery($qb, $this->getKnownMetadata(), $fileTableAlias, $fileIdField);
 	}
 
 	/**
@@ -220,19 +223,49 @@ class FilesMetadataManager implements IFilesMetadataManager {
 	 * @return IFilesMetadata
 	 * @since 28.0.0
 	 */
-	public function getAllMetadata(): IFilesMetadata {
-		$all = new FilesMetadata();
+	public function getKnownMetadata(): IFilesMetadata {
+		if (null !== $this->all) {
+			return $this->all;
+		}
+		$this->all = new FilesMetadata();
 
 		try {
 			$data = json_decode($this->config->getAppValue('core', self::CONFIG_KEY, '[]'), true, 127, JSON_THROW_ON_ERROR);
-			$all->import($data);
+			$this->all->import($data);
 		} catch (JsonException) {
-			$this->logger->warning('issue while reading stored list of metadata. Adviced to run ./occ files:scan --all --generate-metadata');
+			$this->logger->warning('issue while reading stored list of metadata. Advised to run ./occ files:scan --all --generate-metadata');
 		}
 
-		return $all;
+		return $this->all;
 	}
 
+	/**
+	 * @param string $key metadata key
+	 * @param string $type metadata type
+	 *
+	 * @inheritDoc
+	 * @since 28.0.0
+	 * @see IMetadataValueWrapper::TYPE_INT
+	 * @see IMetadataValueWrapper::TYPE_FLOAT
+	 * @see IMetadataValueWrapper::TYPE_BOOL
+	 * @see IMetadataValueWrapper::TYPE_ARRAY
+	 * @see IMetadataValueWrapper::TYPE_STRING_LIST
+	 * @see IMetadataValueWrapper::TYPE_INT_LIST
+	 * @see IMetadataValueWrapper::TYPE_STRING
+	 */
+	public function initMetadataIndex(string $key, string $type): void {
+		$current = $this->getKnownMetadata();
+		try {
+			if ($current->getType($key) === $type && $current->isIndex($key)) {
+				return; // if key exists, with same type and is already indexed, we do nothing.
+			}
+		} catch (FilesMetadataNotFoundException) {
+			// if value does not exist, we keep on the writing of course
+		}
+
+		$current->import([$key => ['type' => $type, 'indexed' => true]]);
+		$this->config->setAppValue('core', self::CONFIG_KEY, json_encode($current));
+	}
 
 	/**
 	 * load listeners

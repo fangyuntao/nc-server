@@ -33,6 +33,7 @@ use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchComparison;
 use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
+use OCP\FilesMetadata\Model\IMetadataQuery;
 
 /**
  * Tools for transforming search queries into database queries
@@ -87,13 +88,21 @@ class SearchBuilder {
 	 * @param IQueryBuilder $builder
 	 * @param ISearchOperator[] $operators
 	 */
-	public function searchOperatorArrayToDBExprArray(IQueryBuilder $builder, array $operators) {
-		return array_filter(array_map(function ($operator) use ($builder) {
-			return $this->searchOperatorToDBExpr($builder, $operator);
+	public function searchOperatorArrayToDBExprArray(
+		IQueryBuilder $builder,
+		array $operators,
+		?IMetadataQuery $metadataQuery = null
+	) {
+		return array_filter(array_map(function ($operator) use ($builder, $metadataQuery) {
+			return $this->searchOperatorToDBExpr($builder, $operator, $metadataQuery);
 		}, $operators));
 	}
 
-	public function searchOperatorToDBExpr(IQueryBuilder $builder, ISearchOperator $operator) {
+	public function searchOperatorToDBExpr(
+		IQueryBuilder $builder,
+		ISearchOperator $operator,
+		?IMetadataQuery $metadataQuery = null
+	) {
 		$expr = $builder->expr();
 
 		if ($operator instanceof ISearchBinaryOperator) {
@@ -105,33 +114,37 @@ class SearchBuilder {
 				case ISearchBinaryOperator::OPERATOR_NOT:
 					$negativeOperator = $operator->getArguments()[0];
 					if ($negativeOperator instanceof ISearchComparison) {
-						return $this->searchComparisonToDBExpr($builder, $negativeOperator, self::$searchOperatorNegativeMap);
+						return $this->searchComparisonToDBExpr($builder, $negativeOperator, self::$searchOperatorNegativeMap, $metadataQuery);
 					} else {
 						throw new \InvalidArgumentException('Binary operators inside "not" is not supported');
 					}
 					// no break
 				case ISearchBinaryOperator::OPERATOR_AND:
-					return call_user_func_array([$expr, 'andX'], $this->searchOperatorArrayToDBExprArray($builder, $operator->getArguments()));
+					return call_user_func_array([$expr, 'andX'], $this->searchOperatorArrayToDBExprArray($builder, $operator->getArguments(), $metadataQuery));
 				case ISearchBinaryOperator::OPERATOR_OR:
-					return call_user_func_array([$expr, 'orX'], $this->searchOperatorArrayToDBExprArray($builder, $operator->getArguments()));
+					return call_user_func_array([$expr, 'orX'], $this->searchOperatorArrayToDBExprArray($builder, $operator->getArguments(), $metadataQuery));
 				default:
 					throw new \InvalidArgumentException('Invalid operator type: ' . $operator->getType());
 			}
 		} elseif ($operator instanceof ISearchComparison) {
-			return $this->searchComparisonToDBExpr($builder, $operator, self::$searchOperatorMap);
+			return $this->searchComparisonToDBExpr($builder, $operator, self::$searchOperatorMap, $metadataQuery);
 		} else {
 			throw new \InvalidArgumentException('Invalid operator type: ' . get_class($operator));
 		}
 	}
 
-	private function searchComparisonToDBExpr(IQueryBuilder $builder, ISearchComparison $comparison, array $operatorMap) {
-		if ($comparison->isExtra()) {
-			return null;
+	private function searchComparisonToDBExpr(
+		IQueryBuilder $builder,
+		ISearchComparison $comparison,
+		array $operatorMap,
+		?IMetadataQuery $metadataQuery = null
+	) {
+		if ($comparison->getExtra()) {
+			[$field, $value, $type] = $this->getExtraOperatorField($comparison, $metadataQuery);
+		} else {
+			[$field, $value, $type] = $this->getOperatorFieldAndValue($comparison);
 		}
 
-		$this->validateComparison($comparison);
-
-		[$field, $value, $type] = $this->getOperatorFieldAndValue($comparison);
 		if (isset($operatorMap[$type])) {
 			$queryOperator = $operatorMap[$type];
 			return $builder->expr()->$queryOperator($field, $this->getParameterForValue($builder, $value));
@@ -141,9 +154,12 @@ class SearchBuilder {
 	}
 
 	private function getOperatorFieldAndValue(ISearchComparison $operator) {
+		$this->validateComparison($operator);
+
 		$field = $operator->getField();
 		$value = $operator->getValue();
 		$type = $operator->getType();
+
 		if ($field === 'mimetype') {
 			$value = (string)$value;
 			if ($operator->getType() === ISearchComparison::COMPARE_EQUAL) {
@@ -216,6 +232,24 @@ class SearchBuilder {
 		if (!in_array($operator->getType(), $comparisons[$operator->getField()])) {
 			throw new \InvalidArgumentException('Unsupported comparison for field  ' . $operator->getField() . ': ' . $operator->getType());
 		}
+	}
+
+
+	private function getExtraOperatorField(ISearchComparison $operator, IMetadataQuery $metadataQuery): array {
+		$field = $operator->getField();
+		$value = $operator->getValue();
+		$type = $operator->getType();
+
+		switch($operator->getExtra()) {
+			case 'metadata':
+				$metadataQuery->joinIndex($field);
+				$field = $metadataQuery->getMetadataValueField($field);
+			break;
+			default:
+				throw new \InvalidArgumentException('Invalid extra type: ' . $operator->getExtra());
+		}
+
+		return [$field, $value, $type];
 	}
 
 	private function getParameterForValue(IQueryBuilder $builder, $value) {

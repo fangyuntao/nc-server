@@ -66,7 +66,12 @@ class QuerySearchHelper {
 		);
 	}
 
-	protected function applySearchConstraints(CacheQueryBuilder $query, ISearchQuery $searchQuery, array $caches): void {
+	protected function applySearchConstraints(
+		CacheQueryBuilder $query,
+		ISearchQuery $searchQuery,
+		array $caches,
+		?IMetadataQuery $metadataQuery = null
+	): void {
 		$storageFilters = array_values(array_map(function (ICache $cache) {
 			return $cache->getQueryFilterForStorage();
 		}, $caches));
@@ -74,7 +79,7 @@ class QuerySearchHelper {
 		$filter = new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_AND, [$searchQuery->getSearchOperation(), $storageFilter]);
 		$this->queryOptimizer->processOperator($filter);
 
-		$searchExpr = $this->searchBuilder->searchOperatorToDBExpr($query, $filter);
+		$searchExpr = $this->searchBuilder->searchOperatorToDBExpr($query, $filter, $metadataQuery);
 		if ($searchExpr) {
 			$query->andWhere($searchExpr);
 		}
@@ -146,8 +151,8 @@ class QuerySearchHelper {
 				continue; // only metadata search order are managed here.
 			}
 
-			$alias = $metadataQuery->joinIndex($order->getField());
-			$query->addOrderBy($metadataQuery->getMetadataValueIntField($alias), $order->getDirection());
+			$metadataQuery->joinIndex($order->getField());
+			$query->addOrderBy($metadataQuery->getMetadataValueField($order->getField()), $order->getDirection());
 		}
 
 		return $metadataQuery;
@@ -192,8 +197,12 @@ class QuerySearchHelper {
 			$this->equipQueryForDavTags($query, $this->requireUser($searchQuery));
 		}
 
+
 		$metadataQuery = $this->equipQueryForMetadata($query, $searchQuery);
-		$this->applySearchConstraints($query, $searchQuery, $caches);
+		$this->applySearchConstraints($query, $searchQuery, $caches, $metadataQuery);
+
+
+
 
 		$result = $query->execute();
 		$files = $result->fetchAll();

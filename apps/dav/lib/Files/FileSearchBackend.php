@@ -124,7 +124,7 @@ class FileSearchBackend implements ISearchBackend {
 
 	private function getPropertyDefinitionsForMetadata(): array {
 		$metadataProps = [];
-		$metadata = $this->filesMetadataManager->getAllMetadata();
+		$metadata = $this->filesMetadataManager->getKnownMetadata();
 		$indexes = $metadata->getIndexes();
 		foreach ($metadata->getKeys() as $key) {
 			$isIndex = in_array($key, $indexes);
@@ -399,8 +399,7 @@ class FileSearchBackend implements ISearchBackend {
 				$property = $operator->arguments[0];
 				$value = $this->castValue($property, $operator->arguments[1]->value);
 				if (str_starts_with($property->name, FilesPlugin::FILE_METADATA_PREFIX)) {
-//				return new SearchComparison($trimmedType, substr($order->property->name, strlen(FilesPlugin::FILE_METADATA_PREFIX)), $value, 'metadata');
-					return new SearchComparison($trimmedType, 'photo-taken', $value, 'metadata');
+					return new SearchComparison($trimmedType, substr($property->name, strlen(FilesPlugin::FILE_METADATA_PREFIX)), $value, 'metadata');
 				} else {
 					return new SearchComparison($trimmedType, $this->mapPropertyNameToColumn($property), $value);
 				}

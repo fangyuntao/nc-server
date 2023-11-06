@@ -117,6 +117,17 @@ class FilesMetadata implements IFilesMetadata {
 	 * @param string $key metadata key
 	 *
 	 * @inheritDoc
+	 * @return bool TRUE if key exists and is set as indexed
+	 * @since 28.0.0
+	 */
+	public function isIndex(string $key): bool {
+		return $this->metadata[$key]?->isIndexed() ?? false;
+	}
+
+	/**
+	 * @param string $key metadata key
+	 *
+	 * @inheritDoc
 	 * @return string metadata value
 	 * @throws FilesMetadataNotFoundException
 	 * @throws FilesMetadataTypeException
@@ -268,7 +279,7 @@ class FilesMetadata implements IFilesMetadata {
 	public function set(string $key, string $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->get($key) === $value && $index === in_array($key, $this->getIndexes())) {
+			if ($this->get($key) === $value && $index === $this->isIndex($key)) {
 				return $this; // we ignore if value and index have not changed
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
@@ -295,7 +306,7 @@ class FilesMetadata implements IFilesMetadata {
 	public function setInt(string $key, int $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getInt($key) === $value && $index === in_array($key, $this->getIndexes())) {
+			if ($this->getInt($key) === $value && $index === $this->isIndex($key)) {
 				return $this; // we ignore if value have not changed
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
@@ -321,7 +332,7 @@ class FilesMetadata implements IFilesMetadata {
 	public function setFloat(string $key, float $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getFloat($key) === $value && $index === in_array($key, $this->getIndexes())) {
+			if ($this->getFloat($key) === $value && $index === $this->isIndex($key)) {
 				return $this; // we ignore if value have not changed
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
@@ -349,7 +360,7 @@ class FilesMetadata implements IFilesMetadata {
 	public function setBool(string $key, bool $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getBool($key) === $value && $index === in_array($key, $this->getIndexes())) {
+			if ($this->getBool($key) === $value && $index === $this->isIndex($key)) {
 				return $this; // we ignore if value have not changed
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
@@ -490,7 +501,8 @@ class FilesMetadata implements IFilesMetadata {
 	 * @throws FilesMetadataKeyFormatException
 	 */
 	private function confirmKeyFormat(string $key): void {
-		if (ctype_alnum(str_replace('-', '', $key))) {
+		$acceptedChars = ['-', '_'];
+		if (ctype_alnum(str_replace($acceptedChars, '', $key))) {
 			return;
 		}
 
@@ -506,10 +518,10 @@ class FilesMetadata implements IFilesMetadata {
 		return $this->updated;
 	}
 
-	public function jsonSerialize(): array {
+	public function jsonSerialize(bool $emptyValues = false): array {
 		$data = [];
 		foreach ($this->metadata as $metaKey => $metaValueWrapper) {
-			$data[$metaKey] = $metaValueWrapper->jsonSerialize();
+			$data[$metaKey] = $metaValueWrapper->jsonSerialize($emptyValues);
 		}
 
 		return $data;

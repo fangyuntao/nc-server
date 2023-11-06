@@ -52,7 +52,10 @@ interface IMetadataQuery {
 
 	/**
 	 * join the metadata_index table, based on a metadataKey.
-	 * This will prep the query for condition based on this specific metadataKey
+	 * This will prep the query for condition based on this specific metadataKey.
+	 * If a link to the metadataKey already exists, returns known alias.
+	 *
+	 * TODO: investigate how to support a search done on multiple values for same key (AND).
 	 *
 	 * @param string $metadataKey metadata key
 	 * @param bool $enforce limit the request only to existing metadata
@@ -63,52 +66,23 @@ interface IMetadataQuery {
 	public function joinIndex(string $metadataKey, bool $enforce = false): string;
 
 	/**
-	 * entry must have a specific value (string) for linked metadata
-	 *
-	 * @param string $aliasIndex table alias related to metadata key
-	 * @param string $value metadata value
-	 *
-	 * @since 28.0.0
-	 */
-	public function enforceMetadataValue(string $aliasIndex, string $value): void;
-
-	/**
-	 * entry must have a specific value (int) for linked metadata
-	 *
-	 * @param string $aliasIndex table alias related to metadata key
-	 * @param int $value metadata value
-	 *
-	 * @since 28.0.0
-	 */
-	public function enforceMetadataValueInt(string $aliasIndex, int $value): void;
-
-	/**
 	 * returns the name of the field for metadata key to be used in query expressions
 	 *
-	 * @param string $aliasIndex table alias related to metadata key
+	 * @param string $metadataKey metadata key
 	 *
-	 * @return string
+	 * @return string table field
 	 * @since 28.0.0
 	 */
-	public function getMetadataKeyField(string $aliasIndex): string;
+	public function getMetadataKeyField(string $metadataKey): string;
 
 	/**
 	 * returns the name of the field for metadata string value to be used in query expressions
 	 *
-	 * @param string $aliasIndex table alias related to metadata key
+	 * @param string $metadataKey metadata key
 	 *
 	 * @return string table field
 	 * @since 28.0.0
 	 */
-	public function getMetadataValueField(string $aliasIndex): string;
+	public function getMetadataValueField(string $metadataKey): string;
 
-	/**
-	 * returns the name of the field for metadata int value to be used in query expressions
-	 *
-	 * @param string $aliasIndex table alias related to metadata key
-	 *
-	 * @return string table field
-	 * @since 28.0.0
-	 */
-	public function getMetadataValueIntField(string $aliasIndex): string;
 }
