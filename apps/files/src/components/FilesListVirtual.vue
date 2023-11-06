@@ -30,12 +30,12 @@
 		<VirtualList ref="table"
 			:data-component="userConfig.grid_view ? FileEntryGrid : FileEntry"
 			:data-key="'source'"
-			:data-sources="nodes"
+			:data-sources="filteredNodes"
 			:grid-mode="userConfig.grid_view"
 			:extra-props="{
 				isMtimeAvailable,
 				isSizeAvailable,
-				nodes,
+				nodes: filteredNodes,
 				filesListWidth,
 			}"
 			:scroll-to-index="scrollToIndex"
@@ -63,7 +63,7 @@
 					:files-list-width="filesListWidth"
 					:is-mtime-available="isMtimeAvailable"
 					:is-size-available="isSizeAvailable"
-					:nodes="nodes" />
+					:nodes="filteredNodes" />
 			</template>
 
 			<!-- Tfoot-->
@@ -71,7 +71,7 @@
 				<FilesListTableFooter :files-list-width="filesListWidth"
 					:is-mtime-available="isMtimeAvailable"
 					:is-size-available="isSizeAvailable"
-					:nodes="nodes"
+					:nodes="filteredNodes"
 					:summary="summary" />
 			</template>
 		</VirtualList>
@@ -100,6 +100,7 @@ import FilesListTableHeader from './FilesListTableHeader.vue'
 import filesListWidthMixin from '../mixins/filesListWidth.ts'
 import logger from '../logger.js'
 import VirtualList from './VirtualList.vue'
+import { filterOutLivePhotosMov } from '../services/LivePhotos.ts'
 
 export default Vue.extend({
 	name: 'FilesListVirtual',
@@ -156,7 +157,7 @@ export default Vue.extend({
 		},
 
 		files() {
-			return this.nodes.filter(node => node.type === 'file')
+			return this.filteredNodes.filter(node => node.type === 'file')
 		},
 
 		fileId() {
@@ -168,7 +169,7 @@ export default Vue.extend({
 			return n('files', '{count} file', '{count} files', count, { count })
 		},
 		summaryFolder() {
-			const count = this.nodes.length - this.files.length
+			const count = this.filteredNodes.length - this.files.length
 			return n('files', '{count} folder', '{count} folders', count, { count })
 		},
 		summary() {
@@ -179,14 +180,14 @@ export default Vue.extend({
 			if (this.filesListWidth < 768) {
 				return false
 			}
-			return this.nodes.some(node => node.mtime !== undefined)
+			return this.filteredNodes.some(node => node.mtime !== undefined)
 		},
 		isSizeAvailable() {
 			// Hide size column on narrow screens
 			if (this.filesListWidth < 768) {
 				return false
 			}
-			return this.nodes.some(node => node.attributes.size !== undefined)
+			return this.filteredNodes.some(node => node.attributes.size !== undefined)
 		},
 
 		sortedHeaders() {
@@ -199,6 +200,9 @@ export default Vue.extend({
 
 		canUpload() {
 			return this.currentFolder && (this.currentFolder.permissions & Permission.CREATE) !== 0
+		},
+		filteredNodes() {
+			return [filterOutLivePhotosMov].reduce((nodes, filter) => nodes.filter(filter), this.nodes)
 		},
 	},
 
@@ -225,7 +229,7 @@ export default Vue.extend({
 			if (document.documentElement.clientWidth > 1024 && this.currentFolder.fileid !== fileId) {
 				// Open the sidebar for the given URL fileid
 				// iif we just loaded the app.
-				const node = this.nodes.find(n => n.fileid === fileId) as NcNode
+				const node = this.filteredNodes.find(n => n.fileid === fileId) as NcNode
 				if (node && sidebarAction?.enabled?.([node], this.currentView)) {
 					logger.debug('Opening sidebar on file ' + node.path, { node })
 					sidebarAction.exec(node, this.currentView, this.currentFolder.path)
@@ -235,7 +239,7 @@ export default Vue.extend({
 
 		scrollToFile(fileId: number, warn = true) {
 			if (fileId) {
-				const index = this.nodes.findIndex(node => node.fileid === fileId)
+				const index = this.filteredNodes.findIndex(node => node.fileid === fileId)
 				if (warn && index === -1 && fileId !== this.currentFolder.fileid) {
 					showError(this.t('files', 'File not found'))
 				}
@@ -510,6 +514,12 @@ export default Vue.extend({
 				right: -10px;
 			}
 
+			&-live {
+				position: absolute;
+				bottom: 0px;
+				right: -10px;
+			}
+
 			// Folder overlay
 			&-overlay {
 				position: absolute;
@@ -671,6 +681,18 @@ tbody.files-list__tbody.files-list__tbody--grid {
 	.files-list__row-icon-favorite {
 		position: absolute;
 		top: 0;
+		right: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--clickable-area);
+		height: var(--clickable-area);
+	}
+
+	// Live photos icon in the top right
+	.files-list__row-icon-live {
+		position: absolute;
+		bottom: -22px; // Move it down by half of its width
 		right: 0;
 		display: flex;
 		align-items: center;

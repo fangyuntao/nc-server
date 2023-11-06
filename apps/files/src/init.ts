@@ -40,6 +40,8 @@ import registerPreviewServiceWorker from './services/ServiceWorker.js'
 
 import './init-templates'
 
+import { initLivePhotos } from './services/LivePhotos'
+
 // Register file actions
 registerFileAction(deleteAction)
 registerFileAction(downloadAction)
@@ -62,3 +64,5 @@ registerRecentView()
 
 // Register preview service worker
 registerPreviewServiceWorker()
+
+initLivePhotos()
