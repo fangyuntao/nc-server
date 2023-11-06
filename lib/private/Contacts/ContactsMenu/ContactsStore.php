@@ -44,6 +44,12 @@ use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
 use OCP\L10N\IFactory as IL10NFactory;
+use function array_column;
+use function array_fill_keys;
+use function array_filter;
+use function array_key_exists;
+use function array_merge;
+use function count;
 
 class ContactsStore implements IContactsStore {
 	public function __construct(
@@ -73,19 +79,47 @@ class ContactsStore implements IContactsStore {
 		if ($offset !== null) {
 			$options['offset'] = $offset;
 		}
-		$recentStatusUids = $this->userStatusService?->findAllRecentStatusChanges($limit) ?? [];
+		$recentStatuses = $this->userStatusService?->findAllRecentStatusChanges($limit) ?? [];
 
 		// Search by status if there is no filter and statuses are available
-		if (($filter === null || $filter === '') && $offset === null && !empty($recentStatusUids)) {
+		if (($filter === null || $filter === '') && $offset === null && !empty($recentStatuses)) {
 			$allContacts = array_filter(array_map(function(UserStatus $userStatus) use ($options) {
-				return $this->contactsManager->search(
+				$contact = $this->contactsManager->search(
 					$userStatus->getUserId(),
 					[
 						'UID',
 					],
 					$options
 				)[0] ?? null;
-			}, $recentStatusUids));
+				if ($contact !== null) {
+					$contact['withStatus'] = true;
+				}
+				return $contact;
+			}, $recentStatuses));
+			if ($limit !== null && count($allContacts) < $limit) {
+				// More contacts were requested
+				$fromContacts = $this->contactsManager->search(
+					$filter ?? '',
+					[
+						'FN',
+						'EMAIL'
+					],
+					array_merge(
+						$options,
+						[
+							'limit' => $limit - count($allContacts),
+						],
+					),
+				);
+
+				// Create hash map of all status contacts
+				$existing = array_fill_keys(array_column($allContacts, 'URI'), null);
+				// Append the ones that are new
+				$allContacts = array_merge(
+					$allContacts,
+					array_filter($fromContacts, fn(array $contact): bool => !array_key_exists($contact['URI'], $existing))
+				);
+			}
 		} else {
 			$allContacts = $this->contactsManager->search(
 				$filter ?? '',

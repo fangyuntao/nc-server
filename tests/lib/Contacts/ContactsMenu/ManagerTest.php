@@ -26,6 +26,7 @@ namespace Tests\Contacts\ContactsMenu;
 
 use OC\Contacts\ContactsMenu\ActionProviderStore;
 use OC\Contacts\ContactsMenu\ContactsStore;
+use OC\Contacts\ContactsMenu\Entry;
 use OC\Contacts\ContactsMenu\Manager;
 use OCP\App\IAppManager;
 use OCP\Constants;
@@ -65,7 +66,7 @@ class ManagerTest extends TestCase {
 	private function generateTestEntries(): array {
 		$entries = [];
 		foreach (range('Z', 'A') as $char) {
-			$entry = $this->createMock(IEntry::class);
+			$entry = $this->createMock(Entry::class);
 			$entry->expects($this->any())
 				->method('getFullName')
 				->willReturn('Contact ' . $char);

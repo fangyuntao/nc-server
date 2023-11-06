@@ -28,6 +28,7 @@ namespace Tests\Contacts\ContactsMenu;
 use OC\Contacts\ContactsMenu\ContactsStore;
 use OC\KnownUser\KnownUserService;
 use OC\Profile\ProfileManager;
+use OCA\UserStatus\Service\StatusService;
 use OCP\Contacts\IManager;
 use OCP\IConfig;
 use OCP\IGroupManager;
@@ -40,6 +41,7 @@ use Test\TestCase;
 
 class ContactsStoreTest extends TestCase {
 	private ContactsStore $contactsStore;
+	private StatusService|MockObject $statusService;
 	/** @var IManager|MockObject */
 	private $contactsManager;
 	/** @var ProfileManager */
@@ -61,6 +63,7 @@ class ContactsStoreTest extends TestCase {
 		parent::setUp();
 
 		$this->contactsManager = $this->createMock(IManager::class);
+		$this->statusService = $this->createMock(StatusService::class);
 		$this->userManager = $this->createMock(IUserManager::class);
 		$this->profileManager = $this->createMock(ProfileManager::class);
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
@@ -70,13 +73,14 @@ class ContactsStoreTest extends TestCase {
 		$this->l10nFactory = $this->createMock(IL10NFactory::class);
 		$this->contactsStore = new ContactsStore(
 			$this->contactsManager,
+			$this->statusService,
 			$this->config,
 			$this->profileManager,
 			$this->userManager,
 			$this->urlGenerator,
 			$this->groupManager,
 			$this->knownUserService,
-			$this->l10nFactory
+			$this->l10nFactory,
 		);
 	}
 
