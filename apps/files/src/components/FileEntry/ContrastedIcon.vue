@@ -1,7 +1,7 @@
 <!--
-  - @copyright Copyright (c) 2023 Ferdinand Thiessen <opensource@fthiessen.de>
+  - @copyright Copyright (c) 2023 Louis Chmn <louis@chmn.me>
   -
-  - @author Ferdinand Thiessen <opensource@fthiessen.de>
+  - @author Louis Chmn <louis@chmn.me>
   -
   - @license AGPL-3.0-or-later
   -
@@ -20,33 +20,36 @@
   -
   -->
 <template>
-	<NcIconSvgWrapper class="favorite-marker-icon" :svg="StarSvg" />
+	<NcIconSvgWrapper class="contrasted-icon" :svg="svg" />
 </template>
 
 <script>
-import StarSvg from '@mdi/svg/svg/star.svg?raw'
 import NcIconSvgWrapper from '@nextcloud/vue/dist/Components/NcIconSvgWrapper.js'
 
 /**
- * A favorite icon to be used for overlaying favorite entries like the file preview / icon
- * It has a stroke around the star icon to ensure enough contrast for accessibility.
+ * A live icon to be used for overlaying live photos entries like the file preview / icon
+ * It has a stroke around the icon to ensure enough contrast for accessibility.
  *
  * If the background has a hover state you might want to also apply it to the stroke like this:
  * ```scss
- * .parent:hover :deep(.favorite-marker-icon svg path) {
+ * .parent:hover :deep(.contrasted-icon svg path) {
  *      stroke: var(--color-background-hover);
  * }
  * ```
  */
 export default {
-	name: 'FavoriteIcon',
+	name: 'ContrastedIcon',
 	components: {
 		NcIconSvgWrapper,
 	},
-	data() {
-		return {
-			StarSvg,
-		}
+	props: {
+		/**
+		 * Raw SVG string to render
+		 */
+		svg: {
+			type: String,
+			default: '',
+		},
 	},
 	async mounted() {
 		await this.$nextTick()
@@ -57,7 +60,7 @@ export default {
 }
 </script>
 <style lang="scss" scoped>
-.favorite-marker-icon {
+.contrasted-icon {
 	color: #a08b00;
 	// Override NcIconSvgWrapper defaults (clickable area)
 	min-width: unset !important;

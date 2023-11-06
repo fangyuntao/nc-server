@@ -47,7 +47,14 @@
 		<span v-if="isFavorite"
 			class="files-list__row-icon-favorite"
 			:aria-label="t('files', 'Favorite')">
-			<FavoriteIcon v-once />
+			<ContrastedIcon v-once :svg="StarSvg" />
+		</span>
+
+		<!-- Live Photos icon -->
+		<span v-if="isLive"
+			class="files-list__row-icon-live"
+			:aria-label="t('files', 'Live')">
+			<ContrastedIcon v-once :svg="PlayCircleSvg" />
 		</span>
 	</span>
 </template>
@@ -72,7 +79,10 @@ import NetworkIcon from 'vue-material-design-icons/Network.vue'
 import TagIcon from 'vue-material-design-icons/Tag.vue'
 
 import { useUserConfigStore } from '../../store/userconfig.ts'
-import FavoriteIcon from './FavoriteIcon.vue'
+import { isLivePhoto } from '../../services/LivePhotos'
+import ContrastedIcon from './ContrastedIcon.vue'
+import StarSvg from '@mdi/svg/svg/star.svg?raw'
+import PlayCircleSvg from '@mdi/svg/svg/play-circle.svg?raw'
 
 export default Vue.extend({
 	name: 'FileEntryPreview',
@@ -80,7 +90,7 @@ export default Vue.extend({
 	components: {
 		AccountGroupIcon,
 		AccountPlusIcon,
-		FavoriteIcon,
+		ContrastedIcon,
 		FileIcon,
 		FolderIcon,
 		FolderOpenIcon,
@@ -115,6 +125,8 @@ export default Vue.extend({
 	data() {
 		return {
 			backgroundFailed: undefined as boolean | undefined,
+			StarSvg,
+			PlayCircleSvg,
 		}
 	},
 
@@ -124,6 +136,9 @@ export default Vue.extend({
 		},
 		isFavorite(): boolean {
 			return this.source.attributes.favorite === 1
+		},
+		isLive(): boolean {
+			return isLivePhoto(this.source)
 		},
 
 		userConfig(): UserConfig {

@@ -35,5 +35,12 @@ export function initLivePhotos(): void {
  * @return {boolean} Whether the node should be displayed of not.
  */
 export function filterOutLivePhotosMov(node: Node) {
-	return !(node.attributes['metadata-files-live-photo'] !== null && node.mime === 'video/quicktime')
+	return !(isLivePhoto(node) && node.mime === 'video/quicktime')
+}
+
+/**
+ * @param {Node} node - The node
+ */
+export function isLivePhoto(node: Node): boolean {
+	return node.attributes['metadata-files-live-photo'] !== null
 }
