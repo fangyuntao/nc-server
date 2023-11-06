@@ -39,6 +39,7 @@ use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\DAV\Exception\Conflict;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
+use Sabre\VObject\Component\VTimeZone;
 use Sabre\VObject\ITip\Message;
 use Sabre\VObject\Property;
 use Sabre\VObject\Reader;
@@ -93,7 +94,7 @@ class CalendarImpl implements ICreateFromString, IHandleImipMessage {
 		return $this->calendarInfo['{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}schedule-calendar-transp'];
 	}
 
-	public function getSchedulingTimezone(): ?Property {
+	public function getSchedulingTimezone(): ?VTimeZone {
 		$tzProp = '{' . \OCA\DAV\CalDAV\Schedule\Plugin::NS_CALDAV . '}calendar-timezone';
 		if (!isset($this->calendarInfo[$tzProp])) {
 			return null;
@@ -103,7 +104,7 @@ class CalendarImpl implements ICreateFromString, IHandleImipMessage {
 		$timezoneProp = $this->calendarInfo[$tzProp];
 		/** @var VCalendar $vtimezoneObj */
 		$timezoneProp = Reader::read($timezoneProp);
-		return $vtimezoneObj->VTIMEZONE;
+		return $timezoneProp->VTIMEZONE;
 	}
 
 	/**

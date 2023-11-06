@@ -22,24 +22,28 @@
  */
 namespace OCA\DAV\Tests\unit\CalDAV\Status;
 
-use OCA\DAV\CalDAV\CalendarHome;
+use OC\Calendar\CalendarQuery;
+use OCA\DAV\CalDAV\CalendarImpl;
 use OCA\DAV\CalDAV\FreeBusy\FreeBusyGenerator;
 use OCA\DAV\CalDAV\InvitationResponse\InvitationResponseServer;
 use OCA\DAV\CalDAV\Schedule\Plugin;
-use OCA\DAV\CalDAV\Search\SearchPlugin;
-use OCA\DAV\CalDAV\Search\Xml\Request\CalendarSearchReport;
+use OCA\DAV\CalDAV\Status\Status;
 use OCA\DAV\CalDAV\Status\StatusService;
 use OCA\DAV\Connector\Sabre\Server;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Calendar\IManager;
 use OCP\IL10N;
 use OCP\IUser;
-use phpDocumentor\Reflection\Types\Self_;
+use OCP\UserStatus\IUserStatus;
 use PHPUnit\Framework\MockObject\MockObject;
+use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
 use Sabre\DAV\Exception\NotAuthenticated;
 use Sabre\DAV\Xml\Property\LocalHref;
 use Sabre\DAVACL\Exception\NeedPrivileges;
-use Sabre\Xml\Service;
+use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\Component\VTimeZone;
+use Sabre\VObject\Document;
+use Sabre\VObject\Reader;
 use Test\TestCase;
 
 class StatusServiceTest extends TestCase {
@@ -105,7 +109,8 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
 	public function testNoAcl(): void {
@@ -164,7 +169,8 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
 	public function testNoInbox(): void {
@@ -223,7 +229,8 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
 	public function testNoPrivilegesAcl(): void {
@@ -289,7 +296,8 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
 	public function testNotAuthenticated(): void {
@@ -354,7 +362,8 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
 	public function testNoCalendars(): void {
@@ -424,10 +433,11 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
-	public function testEmptyAvailabilityAndCalendarEvents(): void {
+	public function testEmptyAvailabilityAndNoSearchCalendars(): void {
 		$user = $this->createConfiguredMock(IUser::class, [
 			'getUID' => 'admin',
 			'getEMailAddress' => 'test@test.com',
@@ -440,6 +450,8 @@ class StatusServiceTest extends TestCase {
 		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
 		$now = new \DateTimeImmutable('1970-1-1', new \DateTimeZone('UTC'));
 		$principal = 'principals/users/admin';
+		$calendar = $this->createMock(CalendarImpl::class);
+		$query = $this->createMock(CalendarQuery::class);
 
 		$user->expects(self::once())
 			->method('getUID')
@@ -472,11 +484,16 @@ class StatusServiceTest extends TestCase {
 		$this->calendarManager->expects(self::once())
 			->method('getCalendarsForPrincipal')
 			->with($principal)
-			->willReturn([]);
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('transparent'));
 		$this->timeFactory->expects(self::never())
 			->method('getDateTime');
-		$this->calendarManager->expects(self::never())
-			->method('newQuery');
 		$this->calendarManager->expects(self::never())
 			->method('searchForPrincipal');
 		$this->generator->expects(self::never())
@@ -494,7 +511,1032 @@ class StatusServiceTest extends TestCase {
 		$this->generator->expects(self::never())
 			->method('getResult');
 
-		$this->service->processCalendarAvailability($user, $availability);
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
 	}
 
+	public function testEmptyAvailabilityAndSearchCalendarsNoResults(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$availability = '';
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::never())
+			->method('getVCalendar');
+		$this->generator->expects(self::never())
+			->method('setBaseObject');
+		$this->generator->expects(self::never())
+			->method('setObjects');
+		$this->generator->expects(self::never())
+			->method('setTimeRange');
+		$this->generator->expects(self::never())
+			->method('setTimeZone');
+		$this->generator->expects(self::never())
+			->method('setVAvailability');
+		$this->generator->expects(self::never())
+			->method('getResult');
+
+		$status = $this->service->processCalendarAvailability($user, $availability);
+		$this->assertNull($status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsNoResults(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertNull($status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsStatusOnline(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VFREEBUSY
+DTSTART:19700101T000000Z
+DTEND:19700101T003600Z
+DTSTAMP:19700101T000200Z
+END:VFREEBUSY
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertEquals(new Status(IUserStatus::ONLINE), $status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsStatusBusyNoFBType(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VFREEBUSY
+DTSTART:19700101T000000Z
+DTEND:19700101T003600Z
+DTSTAMP:19700101T000200Z
+FREEBUSY:19700101T000000Z/19700101T003600Z
+END:VFREEBUSY
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertEquals(new Status(IUserStatus::BUSY, IUserStatus::MESSAGE_CALENDAR_BUSY), $status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsStatusBusy(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VFREEBUSY
+DTSTART:19700101T000000Z
+DTEND:19700101T003600Z
+DTSTAMP:19700101T000200Z
+FREEBUSY;FBTYPE=BUSY:19700101T000000Z/19700101T003600Z
+END:VFREEBUSY
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+		$this->l10n->expects(self::once())
+			->method('t')
+			->with('In a meeting')
+			->willReturn('In a meeting');
+
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertEquals(new Status(IUserStatus::BUSY, IUserStatus::MESSAGE_CALENDAR_BUSY, 'In a meeting'), $status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsStatusBusyUnavailable(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VFREEBUSY
+DTSTART:19700101T000000Z
+DTEND:19700101T003600Z
+DTSTAMP:19700101T000200Z
+FREEBUSY;FBTYPE=BUSY-UNAVAILABLE:19700101T000000Z/19700101T003600Z
+END:VFREEBUSY
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+		$this->l10n->expects(self::never())
+			->method('t');
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertEquals(new Status(IUserStatus::AWAY, IUserStatus::MESSAGE_AVAILABILITY), $status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsStatusBusyTentative(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VFREEBUSY
+DTSTART:19700101T000000Z
+DTEND:19700101T003600Z
+DTSTAMP:19700101T000200Z
+FREEBUSY;FBTYPE=BUSY-TENTATIVE:19700101T000000Z/19700101T003600Z
+END:VFREEBUSY
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+		$this->l10n->expects(self::never())
+			->method('t');
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertEquals(new Status(IUserStatus::AWAY, IUserStatus::MESSAGE_CALENDAR_BUSY_TENTATIVE), $status);
+	}
+
+	public function testAvailabilityAndSearchCalendarsStatusBusyUnknownProperty(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$server = $this->createMock(Server::class);
+		$schedulingPlugin = $this->createMock(Plugin::class);
+		$aclPlugin = $this->createMock(\Sabre\DAVACL\Plugin::class);
+		$calendarHome = $this->createMock(LocalHref::class);
+		$acl = [[200 => ['{urn:ietf:params:xml:ns:caldav}schedule-inbox-URL' => $calendarHome]]];
+		$now = new \DateTimeImmutable('1970-1-1 00:00', new \DateTimeZone('UTC'));
+		$inAnHour = new \DateTime('1970-1-1 01:00');
+		$immutableInAnHour = \DateTimeImmutable::createFromMutable($inAnHour);
+		$principal = 'principals/users/admin';
+		$query = $this->createMock(CalendarQuery::class);
+		$timezone = new \DateTimeZone('UTC');
+		$timezoneObj = $this->createMock(VTimeZone::class);
+		$calendar = $this->createMock(CalendarImpl::class);
+		$vCalendar = $this->createMock(VCalendar::class);
+		$availability = $this->getVAvailability();
+		$result = Reader::read('BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Sabre//Sabre VObject 4.5.3//EN
+		CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VFREEBUSY
+DTSTART:19700101T000000Z
+DTEND:19700101T003600Z
+DTSTAMP:19700101T000200Z
+FREEBUSY;FBTYPE=X-MEETING:19700101T000000Z/19700101T003600Z
+END:VFREEBUSY
+END:VCALENDAR');
+
+		$user->expects(self::once())
+			->method('getUID')
+			->willReturn('admin');
+		$user->expects(self::once())
+			->method('getEMailAddress')
+			->willReturn('test@test.com');
+		$this->server->expects(self::once())
+			->method('getServer')
+			->willReturn($server);
+		$server->expects(self::exactly(2))
+			->method('getPlugin')
+			->withConsecutive(
+				['caldav-schedule'],
+				['acl'],
+			)->willReturnOnConsecutiveCalls($schedulingPlugin, $aclPlugin);
+		$aclPlugin->expects(self::once())
+			->method('principalSearch')
+			->with(['{http://sabredav.org/ns}email-address' => 'test@test.com'])
+			->willReturn($acl);
+		$calendarHome->expects(self::once())
+			->method('getHref')
+			->willReturn('calendars/admin/inbox/');
+		$aclPlugin->expects(self::once())
+			->method('checkPrivileges')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('now')
+			->willReturn($now);
+		$this->calendarManager->expects(self::once())
+			->method('getCalendarsForPrincipal')
+			->with($principal)
+			->willReturn([$calendar]);
+		$this->calendarManager->expects(self::once())
+			->method('newQuery')
+			->with($principal)
+			->willReturn($query);
+		$calendar->expects(self::once())
+			->method('getSchedulingTransparency')
+			->willReturn(new ScheduleCalendarTransp('opaque'));
+		$calendar->expects(self::once())
+			->method('getSchedulingTimezone')
+			->willReturn($timezoneObj);
+		$timezoneObj->expects(self::once())
+			->method('getTimeZone')
+			->willReturn($timezone);
+		$calendar->expects(self::once())
+			->method('getUri');
+		$query->expects(self::once())
+			->method('addSearchCalendar');
+		$query->expects(self::once())
+			->method('getCalendarUris')
+			->willReturn([$calendar]);
+		$this->timeFactory->expects(self::once())
+			->method('getDateTime')
+			->with('+1 hour')
+			->willReturn($inAnHour);
+		$query->expects(self::once())
+			->method('setTimerangeStart')
+			->with($now);
+		$query->expects(self::once())
+			->method('setTimerangeEnd')
+			->with($immutableInAnHour);
+		$this->calendarManager->expects(self::once())
+			->method('searchForPrincipal')
+			->with($query)
+			->willReturn([]);
+		$this->generator->expects(self::once())
+			->method('getVCalendar')
+			->willReturn($vCalendar);
+		$vCalendar->expects(self::never())
+			->method('add');
+		$this->generator->expects(self::once())
+			->method('setBaseObject')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setObjects')
+			->with($vCalendar);
+		$this->generator->expects(self::once())
+			->method('setTimeRange')
+			->with($now, $immutableInAnHour);
+		$this->generator->expects(self::once())
+			->method('setTimeZone')
+			->with($timezone);
+		$this->generator->expects(self::once())
+			->method('setVAvailability')
+			->with($availability);
+		$this->generator->expects(self::once())
+			->method('getResult')
+			->willReturn($result);
+		$this->l10n->expects(self::never())
+			->method('t');
+		$status = $this->service->processCalendarAvailability($user, $availability->serialize());
+		$this->assertNull($status);
+	}
+
+	private function getVAvailability(): Document {
+		return Reader::read('BEGIN:VCALENDAR
+PRODID:Nextcloud DAV app
+BEGIN:VTIMEZONE
+TZID:Europe/Vienna
+BEGIN:STANDARD
+TZNAME:CET
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+END:STANDARD
+BEGIN:DAYLIGHT
+TZNAME:CEST
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VAVAILABILITY
+BEGIN:AVAILABLE
+DTSTART;TZID=Europe/Vienna:20231025T000000
+DTEND;TZID=Europe/Vienna:20231025T235900
+UID:d866782e-e003-4906-9ece-303f270a2c6b
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU
+END:AVAILABLE
+END:VAVAILABILITY
+END:VCALENDAR');
+	}
 }

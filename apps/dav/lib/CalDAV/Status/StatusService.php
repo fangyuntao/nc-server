@@ -150,12 +150,18 @@ class StatusService {
 			$query->addSearchCalendar($calendarObject->getUri());
 		}
 
-		// Query the next hour
-		$dtStart = $now;
-		$dtEnd = \DateTimeImmutable::createFromMutable($this->timeFactory->getDateTime('+1 hour'));
-		$query->setTimerangeStart($dtStart);
-		$query->setTimerangeEnd($dtEnd);
-		$calendarEvents = $this->calendarManager->searchForPrincipal($query);
+		$calendarEvents = [];
+
+		// Only query the calendars when there's any to search
+		if(!empty($query->getCalendarUris())) {
+			// Query the next hour
+			$dtStart = $now;
+			$dtEnd = \DateTimeImmutable::createFromMutable($this->timeFactory->getDateTime('+1 hour'));
+			$query->setTimerangeStart($dtStart);
+			$query->setTimerangeEnd($dtEnd);
+			$calendarEvents = $this->calendarManager->searchForPrincipal($query);
+		}
+
 		// @todo we can cache that
 		if(empty($availability) && empty($calendarEvents)) {
 			// No availability settings and no calendar events, we can stop here
