@@ -44,7 +44,7 @@ use Sabre\VObject\Property;
 use Sabre\VObject\Reader;
 use function Sabre\Uri\split as uriSplit;
 
-class CalendarImpl implements ICreateFromString, IHandleImipMessage, ISchedulingInformation {
+class CalendarImpl implements ICreateFromString, IHandleImipMessage {
 	private CalDavBackend $backend;
 	private Calendar $calendar;
 	/** @var array<string, mixed> */
