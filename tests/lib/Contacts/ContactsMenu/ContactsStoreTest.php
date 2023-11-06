@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * @copyright 2017 Christoph Wurst <christoph@winzerhof-wurst.at>
  * @copyright 2017 Lukas Reschke <lukas@statuscode.ch>
@@ -28,6 +31,7 @@ namespace Tests\Contacts\ContactsMenu;
 use OC\Contacts\ContactsMenu\ContactsStore;
 use OC\KnownUser\KnownUserService;
 use OC\Profile\ProfileManager;
+use OCA\UserStatus\Db\UserStatus;
 use OCA\UserStatus\Service\StatusService;
 use OCP\Contacts\IManager;
 use OCP\IConfig;
@@ -967,5 +971,218 @@ class ContactsStoreTest extends TestCase {
 		$entry = $this->contactsStore->findOne($user, 0, 'a567');
 
 		$this->assertEquals(null, $entry);
+	}
+
+	public function testGetRecentStatusFirst(): void {
+		$user = $this->createMock(IUser::class);
+		$status1 = new UserStatus();
+		$status1->setUserId('user1');
+		$status2 = new UserStatus();
+		$status2->setUserId('user2');
+		$this->statusService->expects(self::once())
+			->method('findAllRecentStatusChanges')
+			->willReturn([
+				$status1,
+				$status2,
+			]);
+		$this->contactsManager
+			->expects(self::exactly(3))
+			->method('search')
+			->willReturnCallback(function($uid, $searchProps, $options) {
+				return match ([$uid, $options['limit'] ?? null]) {
+					['user1', 1] => [
+						[
+							'UID' => 'user1',
+							'URI' => 'user1.vcf',
+						],
+					],
+					['user2' => [], 1], // Simulate not found
+					['', 4] => [
+						[
+							'UID' => 'contact1',
+							'URI' => 'contact1.vcf',
+						],
+						[
+							'UID' => 'contact2',
+							'URI' => 'contact2.vcf',
+						],
+					],
+					default => [],
+				};
+			});
+
+		$contacts = $this->contactsStore->getContacts(
+			$user,
+			null,
+			5,
+		);
+
+		self::assertCount(3, $contacts);
+		self::assertEquals('user1', $contacts[0]->getProperty('UID'));
+		self::assertEquals('contact1', $contacts[1]->getProperty('UID'));
+		self::assertEquals('contact2', $contacts[2]->getProperty('UID'));
+	}
+
+	public function testPaginateRecentStatus(): void {
+		$user = $this->createMock(IUser::class);
+		$status1 = new UserStatus();
+		$status1->setUserId('user1');
+		$status2 = new UserStatus();
+		$status2->setUserId('user2');
+		$status3 = new UserStatus();
+		$status3->setUserId('user3');
+		$this->statusService->expects(self::exactly(2))
+			->method('findAllRecentStatusChanges')
+			->willReturnCallback(function($limit, $offset) use ($status1, $status2, $status3) {
+				return match ([$limit, $offset]) {
+					[2, null], [2, 0] => [
+						$status1,
+						$status2,
+					],
+					[2, 3] => [
+						$status3,
+					],
+					default => [],
+				};
+			});
+		$this->contactsManager
+			->expects(self::exactly(4))
+			->method('search')
+			->willReturnCallback(function($uid, $searchProps, $options) {
+				return match ([$uid, $options['limit'] ?? null]) {
+					['user1', 1] => [
+						[
+							'UID' => 'user1',
+							'URI' => 'user1.vcf',
+						],
+					],
+					['user2', 1] => [
+						[
+							'UID' => 'user2',
+							'URI' => 'user2.vcf',
+						],
+					],
+					['user3', 1] => [
+						[
+							'UID' => 'user3',
+							'URI' => 'user3.vcf',
+						],
+					],
+					default => [],
+				};
+			});
+
+		$page1 = $this->contactsStore->getContacts(
+			$user,
+			null,
+			2,
+		);
+		$page2 = $this->contactsStore->getContacts(
+			$user,
+			null,
+			2,
+			3,
+		);
+
+		self::assertCount(2, $page1);
+		self::assertCount(1, $page2);
+	}
+
+	public function testPaginateRecentStatusMixedWithContacts(): void {
+		$user = $this->createMock(IUser::class);
+		$status1 = new UserStatus();
+		$status1->setUserId('user1');
+		$status2 = new UserStatus();
+		$status2->setUserId('user2');
+		$status3 = new UserStatus();
+		$status3->setUserId('user3');
+		$this->statusService->expects(self::exactly(3))
+			->method('findAllRecentStatusChanges')
+			->willReturnCallback(function($limit, $offset) use ($status1, $status2, $status3) {
+				return match ([$limit, $offset]) {
+					[2, null], [2, 0] => [
+						$status1,
+						$status2,
+					],
+					[2, 3] => [
+						$status3,
+					],
+					default => [],
+				};
+			});
+		$this->contactsManager
+			->expects(self::exactly(5))
+			->method('search')
+			->willReturnCallback(function($term, $searchProps, $options) {
+				return match ([$term, $options['limit'] ?? null, $options['offset'] ?? 0]) {
+					['user1', 1, 0] => [
+						[
+							'UID' => 'user1',
+							'URI' => 'user1.vcf',
+						],
+					],
+					['user2', 1, 0] => [
+						[
+							'UID' => 'user2',
+							'URI' => 'user2.vcf',
+						],
+					],
+					['user3', 1, 0] => [
+						[
+							'UID' => 'user3',
+							'URI' => 'user3.vcf',
+						],
+					],
+					['', 1, 0]  => [
+						[
+							'UID' => 'contact1',
+							'URI' => 'contact1.vcf',
+						],
+					],
+					['', 2, 3]  => [
+						[
+							'UID' => 'contact2',
+							'URI' => 'contact2.vcf',
+						],
+						[
+							'UID' => 'contact3',
+							'URI' => 'contact3.vcf',
+						],
+					],
+					['', 2, 5]  => [
+						[
+							'UID' => 'contact4',
+							'URI' => 'contact4.vcf',
+						],
+					],
+					default => [],
+				};
+			});
+
+		$page1 = $this->contactsStore->getContacts(
+			$user,
+			null,
+			2,
+		);
+		$page2 = $this->contactsStore->getContacts(
+			$user,
+			null,
+			2,
+			3,
+		);
+		$page3 = $this->contactsStore->getContacts(
+			$user,
+			null,
+			2,
+			5,
+		);
+
+		self::assertCount(2, $page1); // 2x status
+		self::assertEquals('user1', $page1[0]->getProperty('UID'));
+		self::assertEquals('user2', $page1[1]->getProperty('UID'));
+		self::assertCount(2, $page2); // status+contact
+		self::assertEquals('user3', $page2[0]->getProperty('UID'));
+		self::assertEquals('contact1', $page2[1]->getProperty('UID'));
+		self::assertCount(2, $page3); // 2x contact
 	}
 }

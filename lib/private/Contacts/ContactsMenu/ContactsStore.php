@@ -79,10 +79,10 @@ class ContactsStore implements IContactsStore {
 		if ($offset !== null) {
 			$options['offset'] = $offset;
 		}
-		$recentStatuses = $this->userStatusService?->findAllRecentStatusChanges($limit) ?? [];
+		$recentStatuses = $this->userStatusService?->findAllRecentStatusChanges($limit, $offset) ?? [];
 
 		// Search by status if there is no filter and statuses are available
-		if (($filter === null || $filter === '') && $offset === null && !empty($recentStatuses)) {
+		if (($filter === null || $filter === '') && !empty($recentStatuses)) {
 			$allContacts = array_filter(array_map(function(UserStatus $userStatus) use ($options) {
 				$contact = $this->contactsManager->search(
 					$userStatus->getUserId(),
@@ -93,6 +93,7 @@ class ContactsStore implements IContactsStore {
 						$options,
 						[
 							'limit' => 1,
+							'offset' => 0,
 						],
 					),
 				)[0] ?? null;
