@@ -868,7 +868,7 @@ class StatusServiceTest extends TestCase {
 	public function testCalendarAvailabilityNoVavailablility(): void {
 		$user = $this->createConfiguredMock(IUser::class, [
 			'getUID' => 'admin',
-			'getEMailAddress' => 'test@test.com'
+			'getEMailAddress' => 'test@test.com',
 		]);
 
 		$this->userManager->expects(self::once())
@@ -889,7 +889,7 @@ class StatusServiceTest extends TestCase {
 	public function testCalendarAvailabilityVavailablility(): void {
 		$user = $this->createConfiguredMock(IUser::class, [
 			'getUID' => 'admin',
-			'getEMailAddress' => 'test@test.com'
+			'getEMailAddress' => 'test@test.com',
 		]);
 
 		$vavilability = <<<EOF

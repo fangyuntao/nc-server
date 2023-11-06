@@ -55,6 +55,7 @@ return array(
     'OCA\\DAV\\CalDAV\\CalendarProvider' => $baseDir . '/../lib/CalDAV/CalendarProvider.php',
     'OCA\\DAV\\CalDAV\\CalendarRoot' => $baseDir . '/../lib/CalDAV/CalendarRoot.php',
     'OCA\\DAV\\CalDAV\\EventComparisonService' => $baseDir . '/../lib/CalDAV/EventComparisonService.php',
+    'OCA\\DAV\\CalDAV\\FreeBusy\\FreeBusyGenerator' => $baseDir . '/../lib/CalDAV/FreeBusy/FreeBusyGenerator.php',
     'OCA\\DAV\\CalDAV\\ICSExportPlugin\\ICSExportPlugin' => $baseDir . '/../lib/CalDAV/ICSExportPlugin/ICSExportPlugin.php',
     'OCA\\DAV\\CalDAV\\IRestorable' => $baseDir . '/../lib/CalDAV/IRestorable.php',
     'OCA\\DAV\\CalDAV\\Integration\\ExternalCalendar' => $baseDir . '/../lib/CalDAV/Integration/ExternalCalendar.php',

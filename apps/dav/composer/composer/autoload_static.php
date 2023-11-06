@@ -70,6 +70,7 @@ class ComposerStaticInitDAV
         'OCA\\DAV\\CalDAV\\CalendarProvider' => __DIR__ . '/..' . '/../lib/CalDAV/CalendarProvider.php',
         'OCA\\DAV\\CalDAV\\CalendarRoot' => __DIR__ . '/..' . '/../lib/CalDAV/CalendarRoot.php',
         'OCA\\DAV\\CalDAV\\EventComparisonService' => __DIR__ . '/..' . '/../lib/CalDAV/EventComparisonService.php',
+        'OCA\\DAV\\CalDAV\\FreeBusy\\FreeBusyGenerator' => __DIR__ . '/..' . '/../lib/CalDAV/FreeBusy/FreeBusyGenerator.php',
         'OCA\\DAV\\CalDAV\\ICSExportPlugin\\ICSExportPlugin' => __DIR__ . '/..' . '/../lib/CalDAV/ICSExportPlugin/ICSExportPlugin.php',
         'OCA\\DAV\\CalDAV\\IRestorable' => __DIR__ . '/..' . '/../lib/CalDAV/IRestorable.php',
         'OCA\\DAV\\CalDAV\\Integration\\ExternalCalendar' => __DIR__ . '/..' . '/../lib/CalDAV/Integration/ExternalCalendar.php',

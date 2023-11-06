@@ -51,12 +51,15 @@ namespace OCA\DAV\CalDAV\Status;
 
 use DateTimeZone;
 use OC\Calendar\CalendarQuery;
+use OCA\DAV\CalDAV\CalendarImpl;
+use OCA\DAV\CalDAV\FreeBusy\FreeBusyGenerator;
 use OCA\DAV\CalDAV\InvitationResponse\InvitationResponseServer;
 use OCA\DAV\CalDAV\IUser;
 use OCA\DAV\CalDAV\Schedule\Plugin;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Calendar\IManager;
 use OCP\Calendar\ISchedulingInformation;
+use OCP\IL10N;
 use OCP\IUser as User;
 use OCP\UserStatus\IUserStatus;
 use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
@@ -65,13 +68,17 @@ use Sabre\DAVACL\Exception\NeedPrivileges;
 use Sabre\VObject\Component;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
-use Sabre\VObject\FreeBusyGenerator;
 use Sabre\VObject\Parameter;
 use Sabre\VObject\Property;
 use Sabre\VObject\Reader;
 
 class StatusService {
-	public function __construct(private ITimeFactory $timeFactory, private IManager $calendarManager, private InvitationResponseServer $server){}
+	public function __construct(private ITimeFactory $timeFactory,
+								private IManager $calendarManager,
+								private InvitationResponseServer $server,
+								private IL10N $l10n,
+								private FreeBusyGenerator $generator,
+								private VCalendar $calendar){}
 
 	public function processCalendarAvailability(User $user, string $availability): ?Status {
 		$userId = $user->getUID();
@@ -87,7 +94,7 @@ class StatusService {
 		$caldavNS = '{'.$schedulingPlugin::NS_CALDAV.'}';
 
 		/** @var \Sabre\DAVACL\Plugin $aclPlugin */
-		$aclPlugin = $this->server->getPlugin('acl');
+		$aclPlugin = $server->getPlugin('acl');
 		if ('mailto:' === substr($email, 0, 7)) {
 			$email = substr($email, 7);
 		}
@@ -115,17 +122,16 @@ class StatusService {
 			return null;
 		}
 
-		$withTimeZone = $this->timeFactory->withTimeZone('UTC');
+		$calendarTimeZone = $this->timeFactory->now()->getTimezone();
 		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $userId);
 		if(empty($calendars)) {
 			return null;
 		}
 
-		$query = new CalendarQuery('principals/users/' . $userId);
-
+		$query = $this->calendarManager->newQuery('principals/users/' . $userId);
 		foreach ($calendars as $calendarObject) {
 			// We can only work with a calendar if it exposes its scheduling information
-			if (!$calendarObject instanceof ISchedulingInformation) {
+			if (!$calendarObject instanceof CalendarImpl) {
 				continue;
 			}
 
@@ -145,8 +151,8 @@ class StatusService {
 		}
 
 		// Query the next hour
-		$dtStart = new \DateTimeImmutable();
-		$dtEnd = new \DateTimeImmutable('+1 hours');
+		$dtStart = $this->timeFactory->now();
+		$dtEnd = date_create_immutable('+15 minutes');
 		$query->setTimerangeStart($dtStart);
 		$query->setTimerangeEnd($dtEnd);
 		$calendarEvents = $this->calendarManager->searchForPrincipal($query);
@@ -156,35 +162,32 @@ class StatusService {
 			return null;
 		}
 
-		$calendarObjects = new VCalendar();
 		foreach ($calendarEvents as $calendarEvent) {
-			$vEvent = new VEvent($calendarObjects, 'VEVENT');
+			$vEvent = new VEvent($this->calendar, 'VEVENT');
 			foreach($calendarEvent['objects'] as $component) {
 				foreach ($component as $key =>  $value) {
 					$vEvent->add($key, $value[0]);
 				}
 			}
-			$calendarObjects->add($vEvent);
+			$this->calendar->add($vEvent);
 		}
 
-		$vcalendar = new VCalendar();
-		$vcalendar->METHOD = 'REQUEST';
+		$this->calendar->METHOD = 'REQUEST';
 
-		$generator = new FreeBusyGenerator();
-		$generator->setObjects($calendarObjects);
-		$generator->setTimeRange($dtStart, $dtEnd);
-		$generator->setBaseObject($vcalendar);
-		$generator->setTimeZone($calendarTimeZone);
+		$this->generator->setBaseObject($this->calendar);
+		$this->generator->setObjects($this->calendar);
+		$this->generator->setTimeRange($dtStart, $dtEnd);
+		$this->generator->setTimeZone($calendarTimeZone);
 
 		if (!empty($availability)) {
-			$generator->setVAvailability(
+			$this->generator->setVAvailability(
 				Reader::read(
 					$availability
 				)
 			);
 		}
 		// Generate the intersection of VAVILABILITY and all VEVENTS in all calendars
-		$result = $generator->getResult();
+		$result = $this->generator->getResult();
 
 		if (!isset($result->VFREEBUSY)) {
 			return null;
@@ -215,12 +218,13 @@ class StatusService {
 		$fbType = $fbTypeParameter->getValue();
 		switch ($fbType) {
 			case 'BUSY':
-				return new Status(IUserStatus::BUSY, IUserStatus::MESSAGE_CALENDAR_BUSY, 'In a meeting');
+				return new Status(IUserStatus::BUSY, IUserStatus::MESSAGE_CALENDAR_BUSY, $this->l10n->t('In a meeting'));
 			case 'BUSY-UNAVAILABLE':
 				return new Status(IUserStatus::AWAY, IUserStatus::MESSAGE_AVAILABILITY);
 			case 'BUSY-TENTATIVE':
 				return new Status(IUserStatus::AWAY, IUserStatus::MESSAGE_CALENDAR_BUSY_TENTATIVE);
 			default:
+				return null;
 		}
 	}
 }
