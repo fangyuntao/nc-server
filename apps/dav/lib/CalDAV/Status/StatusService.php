@@ -71,7 +71,7 @@ use Sabre\VObject\Property;
 use Sabre\VObject\Reader;
 
 class StatusService {
-	public function __construct(private ITimeFactory $timeFactory, private IManager $calendarManager){}
+	public function __construct(private ITimeFactory $timeFactory, private IManager $calendarManager, private InvitationResponseServer $server){}
 
 	public function processCalendarAvailability(User $user, string $availability): ?Status {
 		$userId = $user->getUID();
@@ -80,15 +80,14 @@ class StatusService {
 			return null;
 		}
 
-		$server = new InvitationResponseServer();
-		$server = $server->getServer();
+		$server = $this->server->getServer();
 
 		/** @var Plugin $schedulingPlugin */
 		$schedulingPlugin = $server->getPlugin('caldav-schedule');
 		$caldavNS = '{'.$schedulingPlugin::NS_CALDAV.'}';
 
 		/** @var \Sabre\DAVACL\Plugin $aclPlugin */
-		$aclPlugin = $server->getPlugin('acl');
+		$aclPlugin = $this->server->getPlugin('acl');
 		if ('mailto:' === substr($email, 0, 7)) {
 			$email = substr($email, 7);
 		}
@@ -116,7 +115,7 @@ class StatusService {
 			return null;
 		}
 
-		$calendarTimeZone = new DateTimeZone('UTC');
+		$withTimeZone = $this->timeFactory->withTimeZone('UTC');
 		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $userId);
 		if(empty($calendars)) {
 			return null;
