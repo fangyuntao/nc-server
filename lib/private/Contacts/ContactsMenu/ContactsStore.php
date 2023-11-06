@@ -89,7 +89,12 @@ class ContactsStore implements IContactsStore {
 					[
 						'UID',
 					],
-					$options
+					array_merge(
+						$options,
+						[
+							'limit' => 1,
+						],
+					),
 				)[0] ?? null;
 				if ($contact !== null) {
 					$contact['withStatus'] = true;
