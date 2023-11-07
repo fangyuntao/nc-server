@@ -26,7 +26,6 @@ declare(strict_types=1);
 
 namespace OC\User;
 
-use DateTimeImmutable;
 use JsonException;
 use OCA\DAV\Db\AbsenceMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -105,16 +104,7 @@ class AvailabilityCoordinator implements IAvailabilityCoordinator {
 			return null;
 		}
 
-		$startDate = new DateTimeImmutable($absenceData->getFirstDay());
-		$endDate = new DateTimeImmutable($absenceData->getLastDay());
-		$data = new OutOfOfficeData(
-			(string)$absenceData->getId(),
-			$user,
-			$startDate->getTimestamp(),
-			$endDate->getTimestamp(),
-			$absenceData->getStatus(),
-			$absenceData->getMessage(),
-		);
+		$data = $absenceData->toOutOufOfficeData($user);
 		$this->setCachedOutOfOfficeData($data);
 		return $data;
 	}
