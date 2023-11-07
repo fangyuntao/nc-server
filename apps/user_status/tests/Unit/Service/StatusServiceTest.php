@@ -886,13 +886,13 @@ class StatusServiceTest extends TestCase {
 		$this->service->getCalendarStatus($user->getUID());
 	}
 
-	public function testCalendarAvailabilityVavailablility(): void {
+	public function testCalendarAvailabilityVavailablilityAvailable(): void {
 		$user = $this->createConfiguredMock(IUser::class, [
 			'getUID' => 'admin',
 			'getEMailAddress' => 'test@test.com',
 		]);
 
-		$vavilability = <<<EOF
+		$vavailability = <<<EOF
 BEGIN:VCALENDAR
 PRODID:Nextcloud DAV app
 BEGIN:VTIMEZONE
@@ -922,18 +922,107 @@ END:AVAILABLE
 END:VAVAILABILITY
 END:VCALENDAR
 EOF;
-		$status = new Status(IUserStatus::ONLINE);
+		$status = new Status(IUserStatus::AWAY);
 		$this->userManager->expects(self::once())
 			->method('get')
 			->with($user->getUID())
 			->willReturn($user);
 		$this->mapper->expects(self::once())
 			->method('getAvailabilityFromPropertiesTable')
-			->willReturn($vavilability);
+			->willReturn($vavailability);
 		$this->calendarStatusService->expects(self::once())
 			->method('processCalendarAvailability')
-			->with($user, $vavilability)
+			->with($user, $vavailability)
 			->willReturn($status);
+		$this->timeFactory->expects(self::once())
+			->method('getTime')
+			->willReturn(0);
+		$this->mapper->expects(self::once())
+			->method('findByUserId')
+			->with($user->getUID())
+			->willThrowException(new DoesNotExistException('Does not exist'));
+		$this->mapper->expects(self::once())
+			->method('insert')
+			->willReturn(new UserStatus());
+
+		$this->service->getCalendarStatus($user->getUID());
+	}
+
+	public function testCalendarAvailabilityVavailablilityUpdate(): void {
+		$user = $this->createConfiguredMock(IUser::class, [
+			'getUID' => 'admin',
+			'getEMailAddress' => 'test@test.com',
+		]);
+		$calDavStatus = new Status(IUserStatus::BUSY, 'meeting', 'In a meeting');
+
+		$oldStatus = new UserStatus();
+		$oldStatus->setId(42);
+		$oldStatus->setUserId($user->getUID());
+		$oldStatus->setStatus(IUserStatus::ONLINE);
+		$oldStatus->setStatusTimestamp(0);
+		$oldStatus->setIsUserDefined(true);
+
+		$newStatus = new UserStatus();
+		$newStatus->setUserId($user->getUID());
+		$newStatus->setStatus(IUserStatus::BUSY);
+		$newStatus->setStatusTimestamp(0);
+		$newStatus->setIsUserDefined(false);
+		$newStatus->setIsBackup(false);
+
+		$vavailability = <<<EOF
+BEGIN:VCALENDAR
+PRODID:Nextcloud DAV app
+BEGIN:VTIMEZONE
+TZID:Europe/Vienna
+BEGIN:STANDARD
+TZNAME:CET
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+END:STANDARD
+BEGIN:DAYLIGHT
+TZNAME:CEST
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VAVAILABILITY
+BEGIN:AVAILABLE
+DTSTART;TZID=Europe/Vienna:20231025T000000
+DTEND;TZID=Europe/Vienna:20231025T235900
+UID:d866782e-e003-4906-9ece-303f270a2c6b
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU
+END:AVAILABLE
+END:VAVAILABILITY
+END:VCALENDAR
+EOF;
+		$this->userManager->expects(self::once())
+			->method('get')
+			->with($user->getUID())
+			->willReturn($user);
+		$this->mapper->expects(self::once())
+			->method('getAvailabilityFromPropertiesTable')
+			->willReturn($vavailability);
+		$this->calendarStatusService->expects(self::once())
+			->method('processCalendarAvailability')
+			->with($user, $vavailability)
+			->willReturn($calDavStatus);
+		$this->predefinedStatusService->expects(self::once())
+			->method('isValidId')
+			->willReturn(true);
+		$this->timeFactory->expects(self::once())
+			->method('getTime')
+			->willReturn(0);
+		$this->mapper->expects(self::once())
+			->method('findByUserId')
+			->with($user->getUID())
+			->willReturn($oldStatus);
+		$this->mapper->expects(self::once())
+			->method('update')
+			->willReturn($newStatus);
 
 		$this->service->getCalendarStatus($user->getUID());
 	}

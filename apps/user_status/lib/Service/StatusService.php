@@ -588,7 +588,7 @@ class StatusService {
 			return;
 		}
 
-		$this->setStatus($userId, $status->getStatus(), $this->timeFactory->getTime(), true);
+		$this->setStatus($userId, $status->getStatus(), $this->timeFactory->getTime(), false);
 
 	}
 }
