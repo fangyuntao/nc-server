@@ -35,6 +35,7 @@ use OCP\ICacheFactory;
 use OCP\IUser;
 use OCP\User\IAvailabilityCoordinator;
 use OCP\User\IOutOfOfficeData;
+use Psr\Log\LoggerInterface;
 
 class AvailabilityCoordinator implements IAvailabilityCoordinator {
 	private ICache $cache;
@@ -42,20 +43,27 @@ class AvailabilityCoordinator implements IAvailabilityCoordinator {
 	public function __construct(
 		ICacheFactory $cacheFactory,
 		private AbsenceMapper $absenceMapper,
+		private LoggerInterface $logger,
 	) {
 		$this->cache = $cacheFactory->createLocal('OutOfOfficeData');
 	}
 
-	/**
-	 * @throws JsonException
-	 */
 	private function getCachedOutOfOfficeData(IUser $user): ?OutOfOfficeData {
 		$cachedString = $this->cache->get($user->getUID());
 		if ($cachedString === null) {
 			return null;
 		}
 
-		$cachedData = json_decode($cachedString, true, 10, JSON_THROW_ON_ERROR);
+		try {
+			$cachedData = json_decode($cachedString, true, 10, JSON_THROW_ON_ERROR);
+		} catch (JsonException $e) {
+			$this->logger->error('Failed to deserialize cached out-of-office data: ' . $e->getMessage(), [
+				'exception' => $e,
+				'json' => $cachedString,
+			]);
+			return null;
+		}
+
 		return new OutOfOfficeData(
 			$cachedData['id'],
 			$user,
@@ -66,21 +74,23 @@ class AvailabilityCoordinator implements IAvailabilityCoordinator {
 		);
 	}
 
-	/**
-	 * @throws JsonException
-	 */
 	private function setCachedOutOfOfficeData(IOutOfOfficeData $data): void {
-		$this->cache->set(
-			$data->getUser()->getUID(),
-			json_encode([
+		try {
+			$cachedString = json_encode([
 				'id' => $data->getId(),
 				'startDate' => $data->getStartDate(),
 				'endDate' => $data->getEndDate(),
 				'shortMessage' => $data->getShortMessage(),
 				'message' => $data->getMessage(),
-			], JSON_THROW_ON_ERROR),
-			300,
-		);
+			], JSON_THROW_ON_ERROR);
+		} catch (JsonException $e) {
+			$this->logger->error('Failed to serialize out-of-office data: ' . $e->getMessage(), [
+				'exception' => $e,
+			]);
+			return;
+		}
+
+		$this->cache->set($data->getUser()->getUID(), $cachedString, 300);
 	}
 
 	public function getCurrentOutOfOfficeData(IUser $user): ?IOutOfOfficeData {

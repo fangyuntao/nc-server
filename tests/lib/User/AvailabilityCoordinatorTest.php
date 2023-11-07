@@ -33,6 +33,7 @@ use OCA\DAV\Db\AbsenceMapper;
 use OCP\ICache;
 use OCP\ICacheFactory;
 use OCP\IUser;
+use Psr\Log\LoggerInterface;
 use Test\TestCase;
 
 class AvailabilityCoordinatorTest extends TestCase {
@@ -40,6 +41,7 @@ class AvailabilityCoordinatorTest extends TestCase {
 	private ICacheFactory $cacheFactory;
 	private ICache $cache;
 	private AbsenceMapper $absenceMapper;
+	private LoggerInterface $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -47,6 +49,7 @@ class AvailabilityCoordinatorTest extends TestCase {
 		$this->cacheFactory = $this->createMock(ICacheFactory::class);
 		$this->cache = $this->createMock(ICache::class);
 		$this->absenceMapper = $this->createMock(AbsenceMapper::class);
+		$this->logger = $this->createMock(LoggerInterface::class);
 
 		$this->cacheFactory->expects(self::once())
 			->method('createLocal')
@@ -55,6 +58,7 @@ class AvailabilityCoordinatorTest extends TestCase {
 		$this->availabilityCoordinator = new AvailabilityCoordinator(
 			$this->cacheFactory,
 			$this->absenceMapper,
+			$this->logger,
 		);
 	}
 
@@ -108,6 +112,43 @@ class AvailabilityCoordinatorTest extends TestCase {
 			->method('findByUserId');
 		$this->cache->expects(self::never())
 			->method('set');
+
+		$expected = new OutOfOfficeData(
+			'420',
+			$user,
+			1696118400,
+			1696723200,
+			'Vacation',
+			'On vacation',
+		);
+		$actual = $this->availabilityCoordinator->getCurrentOutOfOfficeData($user);
+		self::assertEquals($expected, $actual);
+	}
+
+	public function testGetOutOfOfficeDataWithInvalidCachedData(): void {
+		$absence = new Absence();
+		$absence->setId(420);
+		$absence->setUserId('user');
+		$absence->setFirstDay('2023-10-01');
+		$absence->setLastDay('2023-10-08');
+		$absence->setStatus('Vacation');
+		$absence->setMessage('On vacation');
+
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')
+			->willReturn('user');
+
+		$this->cache->expects(self::once())
+			->method('get')
+			->with('user')
+			->willReturn('{"id":"420",}');
+		$this->absenceMapper->expects(self::once())
+			->method('findByUserId')
+			->with('user')
+			->willReturn($absence);
+		$this->cache->expects(self::once())
+			->method('set')
+			->with('user', '{"id":"420","startDate":1696118400,"endDate":1696723200,"shortMessage":"Vacation","message":"On vacation"}', 300);
 
 		$expected = new OutOfOfficeData(
 			'420',
