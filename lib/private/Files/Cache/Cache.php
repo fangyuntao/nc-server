@@ -250,7 +250,7 @@ class Cache implements ICache {
 			$result->closeCursor();
 
 			return array_map(function (array $data) use ($metadataQuery) {
-				$data['metadata'] = $metadataQuery?->extractMetadata($data)?->jsonSerialize() ?? [];
+				$data['metadata'] = $metadataQuery?->extractMetadata($data)?->asArray() ?? [];
 				return self::cacheEntryFromData($data, $this->mimetypeLoader);
 			}, $files);
 		}
