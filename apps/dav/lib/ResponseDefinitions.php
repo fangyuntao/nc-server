@@ -27,7 +27,7 @@ declare(strict_types=1);
 namespace OCA\DAV;
 
 /**
- * @psalm-type DavOutOfOfficeData = array{
+ * @psalm-type DAVOutOfOfficeData = array{
  *     id: int,
  *     userId: string,
  *     firstDay: string,

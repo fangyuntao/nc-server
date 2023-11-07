@@ -33,12 +33,10 @@ use OCP\IUser;
  * @since 28.0.0
  */
 interface IAvailabilityCoordinator {
-
 	/**
 	 * Get the user's out-of-office message, if any
 	 *
 	 * @since 28.0.0
 	 */
 	public function getCurrentOutOfOfficeData(IUser $user): ?IOutOfOfficeData;
-
 }

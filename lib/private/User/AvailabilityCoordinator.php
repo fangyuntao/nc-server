@@ -37,7 +37,6 @@ use OCP\User\IAvailabilityCoordinator;
 use OCP\User\IOutOfOfficeData;
 
 class AvailabilityCoordinator implements IAvailabilityCoordinator {
-
 	private ICache $cache;
 
 	public function __construct(

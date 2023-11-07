@@ -35,7 +35,7 @@ use OCP\AppFramework\OCSController;
 use OCP\IRequest;
 
 /**
- * @psalm-import-type DavOutOfOfficeData from ResponseDefinitions
+ * @psalm-import-type DAVOutOfOfficeData from ResponseDefinitions
  */
 class OutOfOfficeController extends OCSController {
 
@@ -54,7 +54,7 @@ class OutOfOfficeController extends OCSController {
 	 * @NoCSRFRequired
 	 *
 	 * @param string $userId The user id to get out-of-office data for.
-	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_NOT_FOUND, ?DavOutOfOfficeData, array{}>
+	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_NOT_FOUND, ?DAVOutOfOfficeData, array{}>
 	 *
 	 * 200: Out-of-office data
 	 * 404: No out-of-office data was found

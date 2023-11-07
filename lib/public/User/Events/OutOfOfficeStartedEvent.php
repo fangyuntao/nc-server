@@ -34,7 +34,6 @@ use OCP\User\IOutOfOfficeData;
  * @since 28.0.0
  */
 class OutOfOfficeStartedEvent extends Event {
-
 	/**
 	 * @since 28.0.0
 	 */
@@ -48,5 +47,4 @@ class OutOfOfficeStartedEvent extends Event {
 	public function getData(): IOutOfOfficeData {
 		return $this->data;
 	}
-
 }

@@ -33,7 +33,6 @@ use OCP\IUser;
  * @since 28.0.0
  */
 interface IOutOfOfficeData {
-
 	/**
 	 * Get the unique token assigned to the current out-of-office event
 	 *
@@ -75,5 +74,4 @@ interface IOutOfOfficeData {
 	 * @since 28.0.0
 	 */
 	public function getMessage(): string;
-
 }
